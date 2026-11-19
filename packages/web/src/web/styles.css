@@ -4508,3 +4508,200 @@ dialog::backdrop {
     transform: none;
   }
 }
+
+
+/* Pose de pion et signatures élémentaires de l'arène. */
+.arena-stage .last-move-point {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: arena-point-arrive .48s cubic-bezier(.16,.9,.25,1.35) both;
+  filter: drop-shadow(0 0 5px currentColor);
+}
+.arena-impact-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: arena-impact-expand .62s cubic-bezier(.15,.75,.25,1) both;
+}
+.element-strike-0 .element-neon-orbit {
+  fill: none;
+  stroke: #b9ffff;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  animation: arena-neon-spin .72s ease-out both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.element-strike-0 .element-neon-cross {
+  stroke: #eaffff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px #4ff3ff);
+  animation: arena-neon-flash .48s ease-out both;
+}
+.element-strike-0 .element-neon-core {
+  fill: #fff;
+  stroke: #4ff3ff;
+  stroke-width: 3;
+  animation: arena-core-pop .42s ease-out both;
+}
+.element-strike-1 .element-fire-flame {
+  fill: #ff642b55;
+  stroke: #ff8a3c;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px #ff642b);
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: arena-fire-rise .58s cubic-bezier(.2,.8,.25,1) both;
+}
+.element-strike-1 .element-fire-core {
+  fill: #fff0a8;
+  stroke: #fff4c2;
+  stroke-width: 1;
+  animation: arena-core-pop .5s ease-out both;
+}
+.element-strike-1 .element-fire-spark {
+  fill: none;
+  stroke: #ffd36a;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  animation: arena-fire-sparks .58s ease-out both;
+}
+.element-strike-2 .element-ice-crystal {
+  fill: #b9f4ff38;
+  stroke: #dffaff;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px #78dfff);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: arena-ice-form .56s cubic-bezier(.15,.8,.25,1) both;
+}
+.element-strike-2 .element-ice-shard {
+  fill: none;
+  stroke: #8deaff;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: arena-ice-draw .48s ease-out .08s forwards;
+}
+.element-strike-2 .element-ice-spark {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  animation: arena-fire-sparks .58s ease-out both;
+}
+.element-strike-3 .element-lightning-bolt {
+  fill: #fff6a6;
+  stroke: #fff;
+  stroke-width: 1.5;
+  stroke-linejoin: bevel;
+  filter: drop-shadow(0 0 7px #ffe14a);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: arena-lightning-flash .38s steps(2,end) both;
+}
+.element-strike-3 .element-lightning-arc {
+  fill: none;
+  stroke: #fff6a6;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: arena-ice-draw .34s ease-out both;
+}
+.element-strike-4 .element-dark-void {
+  fill: #170d2d;
+  stroke: #c79bff;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 8px #8d4dce);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: arena-dark-collapse .62s ease-in-out both;
+}
+.element-strike-4 .element-dark-ring {
+  fill: none;
+  stroke: #d9baff;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: arena-neon-spin .72s ease-out both;
+}
+.element-strike-4 .element-dark-rift {
+  fill: none;
+  stroke: #f2e7ff;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px #b67bff);
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: arena-ice-draw .42s ease-out .08s forwards;
+}
+.element-strike-4 .element-dark-eye {
+  fill: #fff;
+  filter: drop-shadow(0 0 5px #c79bff);
+  animation: arena-core-pop .48s ease-out both;
+}
+@keyframes arena-point-arrive {
+  0% { opacity: .25; transform: scale(.25); }
+  65% { opacity: 1; transform: scale(1.55); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes arena-impact-expand {
+  0% { opacity: .95; transform: scale(.25); }
+  100% { opacity: 0; transform: scale(2.5); }
+}
+@keyframes arena-neon-spin {
+  from { opacity: 0; transform: rotate(-65deg) scale(.45); }
+  70% { opacity: 1; }
+  to { opacity: 0; transform: rotate(35deg) scale(1.2); }
+}
+@keyframes arena-neon-flash {
+  0% { opacity: 0; transform: scale(.35); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+@keyframes arena-core-pop {
+  0% { opacity: 0; transform: scale(.1); }
+  55% { opacity: 1; transform: scale(1.35); }
+  100% { opacity: 0; transform: scale(.8); }
+}
+@keyframes arena-fire-rise {
+  0% { opacity: 0; transform: translateY(9px) scale(.45); }
+  45% { opacity: 1; transform: translateY(-3px) scale(1.12); }
+  100% { opacity: 0; transform: translateY(-12px) scale(.85); }
+}
+@keyframes arena-fire-sparks {
+  0% { opacity: 0; transform: scale(.35); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+@keyframes arena-ice-form {
+  0% { opacity: 0; transform: rotate(35deg) scale(.2); }
+  65% { opacity: 1; transform: rotate(-8deg) scale(1.08); }
+  100% { opacity: 0; transform: rotate(0) scale(1.18); }
+}
+@keyframes arena-ice-draw { to { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes arena-lightning-flash {
+  0% { opacity: 0; transform: scale(.4) skewX(-15deg); }
+  25% { opacity: 1; transform: scale(1.2) skewX(8deg); }
+  55% { opacity: .35; }
+  100% { opacity: 0; transform: scale(1.05) skewX(0); }
+}
+@keyframes arena-dark-collapse {
+  0% { opacity: 0; transform: scale(1.5); }
+  55% { opacity: 1; transform: scale(.72); }
+  100% { opacity: 0; transform: scale(.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-stage .last-move-point,
+  .arena-impact-ring,
+  .arena-strike [class^="element-"] {
+    animation: none !important;
+  }
+}
