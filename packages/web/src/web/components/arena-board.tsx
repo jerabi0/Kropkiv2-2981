@@ -3,7 +3,7 @@ import "../seal-styles.css";
 import { GameBoard } from "./game-board";
 import { ArenaControls } from "./arena-controls";
 import { ArenaAvatar } from "./arena-avatar";
-import { EFFECT_COLORS, SEALS, SEAL_STYLES, TERRAINS, TERRAIN_COLORS, useArenaSettings } from "../lib/arena-settings";
+import { EFFECT_COLORS, SEAL_STYLES, TERRAINS, TERRAIN_COLORS, useArenaSettings } from "../lib/arena-settings";
 import { arenaSound, unlockArenaAudio } from "../lib/arena-audio";
 import type { Feedback } from "../lib/game-feedback";
 type Event = { id: string; x: number; y: number; player: number; feedback: Feedback | null };
@@ -202,7 +202,7 @@ export function ArenaBoard({
       });
       if (s.sound) arenaSound(true, s.element, !!props.feedback.liberated.length, s.terrain, s.sealStyle);
     }
-  }, [props.game.moves, props.feedback, active, s.sound, s.element, s.terrain]);
+  }, [props.game.moves, props.feedback, active, s.sound, s.element, s.terrain, s.sealStyle]);
   useEffect(() => {
     if (!event) return;
     const t = setTimeout(() => setEvent(null), 2000);
