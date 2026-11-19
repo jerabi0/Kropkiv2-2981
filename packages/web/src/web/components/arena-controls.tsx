@@ -42,6 +42,18 @@ export function ArenaControls() {
         <p>Effets cosmétiques uniquement. Après le premier pion, le temps continue pendant les réglages.</p>
         <div className="arena-selects">
           <label>
+            Terrain
+            <select
+              aria-label="Terrain de l’arène"
+              value={s.terrain}
+              onChange={(e) => update({ terrain: Number(e.target.value) })}
+            >
+              {TERRAINS.map((name, i) => (
+                <option key={name} value={i}>{name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
             Style du coup
             <select
               aria-label="Style du coup"
