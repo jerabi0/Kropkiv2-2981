@@ -1,12 +1,19 @@
 import { describe, test, expect } from "bun:test";
-import { restoreArena, defaults, ELEMENTS, SEALS, TERRAINS } from "./arena-settings";
+import { restoreArena, defaults, ELEMENTS, SEALS, SEAL_STYLES, TERRAINS } from "./arena-settings";
 describe("Habillage sans données de jeu", () => {
   test("douze terrains, cinq styles de coup et douze scellements", () => {
     expect(TERRAINS.length).toBe(12);
     expect(new Set(TERRAINS).size).toBe(12);
     expect(ELEMENTS.length).toBe(5);
+    expect(SEAL_STYLES.length).toBe(5);
     expect(SEALS.length).toBe(12);
     expect(new Set(SEALS).size).toBe(12);
+  });
+  test("les cinq styles de scellement sont restaurés et les valeurs invalides ignorées", () => {
+    for (let sealStyle = 0; sealStyle < 5; sealStyle++)
+      expect(restoreArena(JSON.stringify({ version: 1, sealStyle })).sealStyle).toBe(sealStyle);
+    for (const sealStyle of [-1, 5, 99, "cube"])
+      expect(restoreArena(JSON.stringify({ version: 1, sealStyle })).sealStyle).toBe(defaults.sealStyle);
   });
   test("terrain hors limites ignoré", () => {
     for (const terrain of [-1, 12, 99, "volcan"]) {

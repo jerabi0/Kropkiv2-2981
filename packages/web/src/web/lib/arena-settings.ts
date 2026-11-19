@@ -22,12 +22,14 @@ export const SEALS = [
   "Crâne",
   "Constellation",
 ] as const;
+export const SEAL_STYLES = ["Cercle magique", "Chaînes", "Barrière", "Talismans", "Cube"] as const;
 export const EFFECT_COLORS = ["#4ff3ff", "#ff8a3c", "#9fe8ff", "#ffe14a", "#c79bff"];
 export const ARENA_KEY = "kropki-arena-presentation-v1";
 export type ArenaSettings = {
   terrain: number;
   element: number;
   seal: number;
+  sealStyle: number;
   sound: boolean;
   effects: boolean;
   avatar: "ninja" | "samurai" | "mage" | "photo";
@@ -41,6 +43,7 @@ export const defaults: ArenaSettings = {
   terrain: 0,
   element: 0,
   seal: 0,
+  sealStyle: 0,
   sound: false,
   effects: true,
   avatar: "ninja",
@@ -58,6 +61,8 @@ export function restoreArena(raw: string | null): ArenaSettings {
     if (Number.isInteger(v.terrain) && v.terrain >= 0 && v.terrain < TERRAINS.length) a.terrain = v.terrain;
     if (Number.isInteger(v.element) && v.element >= 0 && v.element < 5) a.element = v.element;
     if (Number.isInteger(v.seal) && v.seal >= 0 && v.seal < 12) a.seal = v.seal;
+    if (Number.isInteger(v.sealStyle) && v.sealStyle >= 0 && v.sealStyle < SEAL_STYLES.length)
+      a.sealStyle = v.sealStyle;
     for (const k of ["sound", "effects"] as const) if (typeof v[k] === "boolean") a[k] = v[k];
     if (["ninja", "samurai", "mage", "photo"].includes(v.avatar)) a.avatar = v.avatar;
     for (const k of ["hair", "skin", "eyes", "cloth"] as const)

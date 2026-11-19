@@ -1,0 +1,153 @@
+/* Cinq traitements visuels de scellement. Purement cosmétiques : aucune règle de capture n'est modifiée. */
+.arena-seal-details {
+  pointer-events: none;
+  opacity: 0;
+  animation: seal-details-arrive .45s ease-out .12s forwards;
+}
+.arena-seal-details circle,
+.arena-seal-details path,
+.arena-seal-details rect,
+.arena-seal-details ellipse,
+.arena-seal-details line {
+  vector-effect: non-scaling-stroke;
+}
+
+/* 1. Cercle magique : runes qui s'allument successivement sur le périmètre. */
+.seal-style-0 .seal-rune-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: seal-rune-ignite .55s ease-out both;
+}
+.seal-style-0 .arena-seal-details > g:nth-child(3n) .seal-rune-ring { animation-delay: .12s; }
+.seal-style-0 .arena-seal-details > g:nth-child(3n + 1) .seal-rune-ring { animation-delay: .24s; }
+.seal-style-0 .seal-rune-mark {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: seal-rune-draw .45s ease-out .15s forwards;
+}
+.seal-style-0 .seal-rune-ring {
+  fill: #100d2b;
+  stroke: #e3c5ff;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 4px #bd83ff);
+}
+.seal-style-0 .seal-rune-mark {
+  stroke: #fff1b8;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px #c99aff);
+}
+
+/* 2. Chaînes : maillons métalliques entrelacés. */
+.seal-style-1 .seal-chain-link {
+  fill: #1b2338;
+  stroke: #d8e3ff;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 3px #91a8d8);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: seal-chain-lock .38s cubic-bezier(.2,.8,.2,1) both;
+}
+.seal-style-1 .seal-chain-link:nth-child(3n) { animation-delay: .12s; }
+.seal-style-1 .seal-chain-link:nth-child(3n + 1) { animation-delay: .24s; }
+.seal-style-1 .arena-seal-edge {
+  stroke: #aebbd8;
+  stroke-dasharray: 7 3;
+}
+
+/* 3. Barrière : piliers d'énergie aux angles de la frontière. */
+.seal-style-2 .seal-barrier-pillar {
+  fill: #b9f7ff;
+  stroke: #fff;
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 5px #54dfff);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: seal-pillar-rise .48s cubic-bezier(.15,.8,.2,1) both;
+}
+.seal-style-2 .seal-barrier-pillar:nth-child(3n) { animation-delay: .12s; }
+.seal-style-2 .seal-barrier-pillar:nth-child(3n + 1) { animation-delay: .24s; }
+.seal-style-2 .arena-seal-edge {
+  stroke: #75eaff;
+  stroke-width: 5;
+  stroke-dasharray: 2 5;
+}
+
+/* 4. Talismans : papiers scellés qui se fixent au contour. */
+.seal-style-3 .seal-talisman {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: seal-talisman-fix .52s cubic-bezier(.15,.85,.25,1) both;
+}
+.seal-style-3 .seal-talisman:nth-child(3n) { animation-delay: .14s; }
+.seal-style-3 .seal-talisman:nth-child(3n + 1) { animation-delay: .28s; }
+.seal-style-3 .seal-talisman rect {
+  fill: #fff0bd;
+  stroke: #d84e48;
+  stroke-width: 1.3;
+  filter: drop-shadow(0 0 4px #ffb45e);
+}
+.seal-style-3 .seal-talisman path {
+  fill: none;
+  stroke: #b72f42;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.seal-style-3 .arena-seal-edge {
+  stroke: #ffc77d;
+  stroke-dasharray: 3 6;
+}
+
+/* 5. Cube : seconde arête décalée pour donner une profondeur géométrique. */
+.seal-style-4 .seal-cube-depth {
+  stroke: #d8c5ff;
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+  opacity: .9;
+  filter: drop-shadow(0 0 4px #a783ff);
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: seal-cube-close .65s ease-out both;
+}
+.seal-style-4 .seal-cube-depth:nth-child(3n) { animation-delay: .14s; }
+.seal-style-4 .seal-cube-depth:nth-child(3n + 1) { animation-delay: .28s; }
+.seal-style-4 .arena-seal-edge {
+  stroke: #a98bff;
+  stroke-width: 3.5;
+  stroke-dasharray: 8 3;
+}
+
+@keyframes seal-rune-ignite {
+  0% { opacity: 0; transform: scale(.2); }
+  65% { opacity: 1; transform: scale(1.35); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes seal-rune-draw { to { stroke-dashoffset: 0; } }
+@keyframes seal-chain-lock {
+  0% { opacity: 0; transform: scale(.25) rotate(-35deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes seal-pillar-rise {
+  0% { opacity: 0; transform: scale(.15) translateY(7px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes seal-talisman-fix {
+  0% { opacity: 0; transform: scale(2.2) translateY(-12px) rotate(-18deg); }
+  70% { opacity: 1; transform: scale(.85) translateY(2px) rotate(5deg); }
+  100% { opacity: 1; transform: scale(1) translateY(0) rotate(0); }
+}
+@keyframes seal-cube-close { to { stroke-dashoffset: 0; } }
+@keyframes seal-details-arrive {
+  0% { opacity: 0; }
+  35% { opacity: 1; }
+  100% { opacity: .95; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-seal-details,
+  .arena-seal-details * {
+    animation: none !important;
+    opacity: .95;
+    stroke-dashoffset: 0;
+    transform: none;
+  }
+}
