@@ -120,3 +120,45 @@
     transform: none;
   }
 }
+
+/* Impact cinématique réservé aux captures et reconquêtes importantes. */
+.board-paper.capture-impact-board .game-board {
+  transform-origin: center;
+  animation: capture-board-impact 620ms cubic-bezier(.16,.78,.25,1) both;
+}
+
+.capture-impact-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, #ffffff24 0%, transparent 68%);
+  box-shadow: inset 0 0 0 2px #ffffff65, inset 0 0 28px #8db5ff55;
+  animation: capture-impact-flash 760ms ease-out both;
+}
+
+@keyframes capture-board-impact {
+  0% { transform: scale(1); }
+  28% { transform: scale(1.018); }
+  58% { transform: scale(.997); }
+  100% { transform: scale(1); }
+}
+
+@keyframes capture-impact-flash {
+  0% { opacity: 0; }
+  22% { opacity: .9; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-paper.capture-impact-board .game-board,
+  .capture-impact-flash {
+    animation: none !important;
+  }
+
+  .capture-impact-flash {
+    opacity: .18;
+    box-shadow: inset 0 0 0 1px #ffffff55;
+  }
+}
