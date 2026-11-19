@@ -92,29 +92,36 @@ export function arenaSound(capture: boolean, element: number, liberated: boolean
   const intervals = SEAL_INTERVALS[sealStyle] ?? SEAL_INTERVALS[0];
   const impact = Math.max(0, Math.min(impactCount, 12));
   const major = capture && impact >= 5;
+  const moveWaves = ["sine", "triangle", "sine", "square", "sawtooth"] as const;
+  const moveBase = root * (0.85 + element * 0.04);
   const notes = capture
     ? liberated
       ? [root * 1.5, root * 1.25, root]
       : intervals.map((n) => root * n)
-    : [root * (0.85 + element * 0.04)];
+    : [moveBase, moveBase * (element === 3 ? 2.4 : 1.5)];
 
   notes.forEach((frequency, index) => {
     const oscillator = audio.createOscillator();
     const gain = audio.createGain();
-    const time = now + index * 0.065;
-    oscillator.type = terrain === 1 || terrain === 11 ? "triangle" : terrain === 3 ? "sawtooth" : "sine";
+    const time = now + index * (capture ? 0.065 : 0.035);
+    oscillator.type = capture
+      ? terrain === 1 || terrain === 11 ? "triangle" : terrain === 3 ? "sawtooth" : "sine"
+      : moveWaves[element] ?? "sine";
     oscillator.frequency.setValueAtTime(frequency, time);
     oscillator.frequency.exponentialRampToValueAtTime(
-      capture ? frequency * (liberated ? 0.72 : major ? 1.8 : 1.5) : frequency * 0.6,
-      time + 0.12,
+      capture ? frequency * (liberated ? 0.72 : major ? 1.8 : 1.5) : frequency * (element === 2 ? 0.82 : 0.72),
+      time + (capture ? 0.12 : 0.095),
     );
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(capture ? (major ? 0.062 : liberated ? 0.04 : 0.05) : 0.018, time + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.22);
+    gain.gain.exponentialRampToValueAtTime(
+      capture ? (major ? 0.062 : liberated ? 0.04 : 0.05) : index === 0 ? 0.022 : 0.008,
+      time + 0.01,
+    );
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + (capture ? 0.22 : index === 0 ? 0.14 : 0.18));
     oscillator.connect(gain);
     gain.connect(audio.destination);
     oscillator.start(time);
-    oscillator.stop(time + 0.24);
+    oscillator.stop(time + (capture ? 0.24 : 0.2));
   });
 
   if (major) {
