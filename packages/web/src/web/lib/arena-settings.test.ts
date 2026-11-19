@@ -1,10 +1,18 @@
 import { describe, test, expect } from "bun:test";
-import { restoreArena, defaults, ELEMENTS, SEALS } from "./arena-settings";
+import { restoreArena, defaults, ELEMENTS, SEALS, TERRAINS } from "./arena-settings";
 describe("Habillage sans données de jeu", () => {
-  test("cinq éléments et douze scellements", () => {
+  test("douze terrains, cinq styles de coup et douze scellements", () => {
+    expect(TERRAINS.length).toBe(12);
+    expect(new Set(TERRAINS).size).toBe(12);
     expect(ELEMENTS.length).toBe(5);
     expect(SEALS.length).toBe(12);
     expect(new Set(SEALS).size).toBe(12);
+  });
+  test("terrain hors limites ignoré", () => {
+    for (const terrain of [-1, 12, 99, "volcan"]) {
+      const s = restoreArena(JSON.stringify({ version: 1, terrain }));
+      expect(s.terrain).toBe(defaults.terrain);
+    }
   });
   test("sauvegarde absente, cassée et version inconnue", () => {
     for (const raw of [null, "{", "null", '{"version":2,"element":4}'])
@@ -33,6 +41,7 @@ describe("Habillage sans données de jeu", () => {
             version: 1,
             seal,
             element,
+            terrain: 11,
             sound: true,
             effects: false,
             avatar: "mage",
@@ -41,6 +50,7 @@ describe("Habillage sans données de jeu", () => {
         );
         expect(s.seal).toBe(seal);
         expect(s.element).toBe(element);
+        expect(s.terrain).toBe(11);
         expect(s.sound).toBe(true);
         expect(s.effects).toBe(false);
         expect(s.avatar).toBe("mage");

@@ -4421,3 +4421,52 @@ dialog::backdrop {
 @media (prefers-reduced-motion: reduce) {
   .arena-stage .game-board circle { transition: none; }
 }
+
+
+/* Terrains d'ambiance : habillage purement visuel, sans effet sur les règles. */
+.arena-stage {
+  overflow: hidden;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--terrain-glow) 18%, transparent), transparent 68%),
+    linear-gradient(145deg, #080d1b, #090b16 60%, color-mix(in srgb, var(--terrain-glow) 9%, #080b16));
+}
+.arena-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .55;
+  background:
+    radial-gradient(circle at 18% 22%, color-mix(in srgb, var(--terrain-glow) 20%, transparent), transparent 30%),
+    radial-gradient(circle at 82% 78%, color-mix(in srgb, var(--terrain-glow) 13%, transparent), transparent 34%);
+  animation: terrain-drift 16s ease-in-out infinite alternate;
+}
+.arena-stage .board-paper {
+  position: relative;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse at 50% 15%, color-mix(in srgb, var(--terrain-glow) 13%, transparent), transparent 72%),
+    linear-gradient(160deg, color-mix(in srgb, var(--terrain-base) 75%, #111827), #070a14 82%);
+  border-color: color-mix(in srgb, var(--terrain-glow) 34%, #293852);
+  box-shadow: 0 12px 34px #0007, 0 0 22px color-mix(in srgb, var(--terrain-glow) 10%, transparent);
+}
+.arena-stage[data-terrain="0"]::before { background-image: repeating-linear-gradient(112deg, transparent 0 28px, #4ff3ff0b 29px 30px), radial-gradient(circle at 18% 22%, #4ff3ff30, transparent 30%); }
+.arena-stage[data-terrain="1"]::before,
+.arena-stage[data-terrain="11"]::before { background-image: radial-gradient(ellipse at 50% 100%, #ff642b35, transparent 62%), radial-gradient(circle at 20% 80%, #ffb13b20, transparent 24%); }
+.arena-stage[data-terrain="2"]::before { background-image: repeating-linear-gradient(145deg, transparent 0 36px, #b9f2ff12 37px 39px), radial-gradient(circle at 80% 20%, #9fe8ff30, transparent 35%); }
+.arena-stage[data-terrain="3"]::before { background-image: repeating-linear-gradient(105deg, transparent 0 54px, #ffe14a0b 55px 56px), radial-gradient(circle at 50% 0%, #b57bff24, transparent 48%); }
+.arena-stage[data-terrain="4"]::before { background-image: radial-gradient(ellipse at 20% 40%, #c79bff24, transparent 40%), radial-gradient(ellipse at 80% 70%, #ff3d7a16, transparent 38%); }
+.arena-stage[data-terrain="5"]::before { background-image: repeating-linear-gradient(75deg, transparent 0 46px, #3fa9ff12 47px 50px), radial-gradient(ellipse at 50% 100%, #3fa9ff24, transparent 65%); }
+.arena-stage[data-terrain="6"]::before,
+.arena-stage[data-terrain="9"]::before { background-image: radial-gradient(ellipse at 25% 100%, #7dffb01c, transparent 50%), radial-gradient(circle at 75% 20%, #e0ff9a16, transparent 32%); }
+.arena-stage[data-terrain="7"]::before { background-image: repeating-linear-gradient(165deg, transparent 0 42px, #e0a85e12 43px 45px), radial-gradient(ellipse at 50% 100%, #e0a85e1f, transparent 55%); }
+.arena-stage[data-terrain="8"]::before { background-image: radial-gradient(ellipse at 50% 0%, #fff2a82a, transparent 50%), repeating-linear-gradient(90deg, transparent 0 65px, #fff2a80a 66px 67px); }
+.arena-stage[data-terrain="10"]::before { background-image: radial-gradient(circle at 20% 25%, #9a8cff30 0 1px, transparent 2px), radial-gradient(circle at 75% 65%, #5ef0ff25 0 1px, transparent 2px), radial-gradient(ellipse at 50% 50%, #9a8cff20, transparent 65%); }
+@keyframes terrain-drift {
+  from { transform: scale(1) translate3d(-1%, 0, 0); opacity: .35; }
+  to { transform: scale(1.08) translate3d(1%, -1%, 0); opacity: .7; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-stage::before { animation: none; }
+}

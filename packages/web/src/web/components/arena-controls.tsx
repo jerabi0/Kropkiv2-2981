@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Sparkles, Volume2, VolumeX } from "lucide-react";
-import { ELEMENTS, SEALS, useArenaSettings } from "../lib/arena-settings";
+import { ELEMENTS, SEALS, TERRAINS, useArenaSettings } from "../lib/arena-settings";
 import { unlockArenaAudio } from "../lib/arena-audio";
 import { ArenaAvatar } from "./arena-avatar";
 export function ArenaControls() {
@@ -35,12 +35,24 @@ export function ArenaControls() {
       <summary>
         <Sparkles size={17} /> Habillage de l’arène{" "}
         <span>
-          {ELEMENTS[s.element]} · {SEALS[s.seal]}
+          {TERRAINS[s.terrain]} · {ELEMENTS[s.element]} · {SEALS[s.seal]}
         </span>
       </summary>
       <div className="arena-controls-body">
         <p>Effets cosmétiques uniquement. Après le premier pion, le temps continue pendant les réglages.</p>
         <div className="arena-selects">
+          <label>
+            Terrain
+            <select
+              aria-label="Terrain de l’arène"
+              value={s.terrain}
+              onChange={(e) => update({ terrain: Number(e.target.value) })}
+            >
+              {TERRAINS.map((name, i) => (
+                <option key={name} value={i}>{name}</option>
+              ))}
+            </select>
+          </label>
           <label>
             Style du coup
             <select

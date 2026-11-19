@@ -9,20 +9,24 @@ export async function unlockArenaAudio() {
     return false;
   }
 }
-export function arenaSound(capture: boolean, element: number, liberated: boolean) {
+export function arenaSound(capture: boolean, element: number, liberated: boolean, terrain = 0) {
   if (!context || context.state !== "running" || document.hidden) return;
   const a = context,
     now = a.currentTime;
-  const notes = capture ? (liberated ? [440, 660, 880] : [160, 320, 640]) : [700 + element * 80];
+  const terrainRoots = [523, 110, 740, 196, 146, 330, 392, 220, 587, 262, 440, 82];
+  const root = terrainRoots[terrain] ?? 440;
+  const notes = capture
+    ? liberated ? [root, root * 1.25, root * 1.5] : [root * 0.5, root, root * 2]
+    : [root * (0.85 + element * 0.04)];
   notes.forEach((f, i) => {
     const o = a.createOscillator(),
       g = a.createGain(),
       t = now + i * 0.065;
-    o.type = element === 1 ? "triangle" : element === 3 ? "sawtooth" : "sine";
+    o.type = terrain === 1 || terrain === 11 ? "triangle" : terrain === 3 ? "sawtooth" : "sine";
     o.frequency.setValueAtTime(f, t);
     o.frequency.exponentialRampToValueAtTime(capture ? f * 1.5 : f * 0.6, t + 0.12);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(capture ? 0.055 : 0.025, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(capture ? 0.05 : 0.018, t + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
     o.connect(g);
     g.connect(a.destination);

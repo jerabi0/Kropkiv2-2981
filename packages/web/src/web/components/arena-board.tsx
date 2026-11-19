@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ComponentProps, type CSSProperties } 
 import { GameBoard } from "./game-board";
 import { ArenaControls } from "./arena-controls";
 import { ArenaAvatar } from "./arena-avatar";
-import { EFFECT_COLORS, SEALS, useArenaSettings } from "../lib/arena-settings";
+import { EFFECT_COLORS, SEALS, TERRAINS, TERRAIN_COLORS, useArenaSettings } from "../lib/arena-settings";
 import { arenaSound, unlockArenaAudio } from "../lib/arena-audio";
 import type { Feedback } from "../lib/game-feedback";
 type Event = { id: string; x: number; y: number; player: number; feedback: Feedback | null };
@@ -158,7 +158,7 @@ export function ArenaBoard({
         player: move.player,
         feedback: feedback ?? null,
       });
-      if (s.sound) arenaSound(!!feedback, s.element, !!feedback?.liberated.length);
+      if (s.sound) arenaSound(!!feedback, s.element, !!feedback?.liberated.length, s.terrain);
     } else if (
       props.feedback &&
       props.feedback !== lastFeedback.current &&
@@ -174,9 +174,9 @@ export function ArenaBoard({
         player: move.player,
         feedback: props.feedback,
       });
-      if (s.sound) arenaSound(true, s.element, !!props.feedback.liberated.length);
+      if (s.sound) arenaSound(true, s.element, !!props.feedback.liberated.length, s.terrain);
     }
-  }, [props.game.moves, props.feedback, active, s.sound, s.element]);
+  }, [props.game.moves, props.feedback, active, s.sound, s.element, s.terrain]);
   useEffect(() => {
     if (!event) return;
     const t = setTimeout(() => setEvent(null), 2000);
@@ -217,13 +217,14 @@ export function ArenaBoard({
     };
   }, [s.sound, active]);
   const color = EFFECT_COLORS[s.element];
+  const terrainColor = TERRAIN_COLORS[s.terrain];
   return (
     <div
-      className="arena-presentation"
-      aria-label="Arène de jeu"
-      style={{ "--arena-effect": color } as CSSProperties}
+      className={`arena-presentation terrain-${s.terrain}`}
+      aria-label={`Arène Kropki · terrain ${TERRAINS[s.terrain]}`}
+      style={{ "--arena-effect": color, "--terrain-glow": terrainColor, "--terrain-base": terrainColor + "18" } as CSSProperties}
     >
-      <div className="arena-stage">
+      <div className="arena-stage" data-terrain={s.terrain}>
         <GameBoard {...props} />
         {event && s.effects && active && (
           <svg
