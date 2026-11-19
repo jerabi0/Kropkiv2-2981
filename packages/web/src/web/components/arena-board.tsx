@@ -176,7 +176,7 @@ export function ArenaBoard({
       });
       if (s.sound) arenaSound(true, s.element, !!props.feedback.liberated.length, s.terrain);
     }
-  }, [props.game.moves, props.feedback, active, s.sound, s.element]);
+  }, [props.game.moves, props.feedback, active, s.sound, s.element, s.terrain]);
   useEffect(() => {
     if (!event) return;
     const t = setTimeout(() => setEvent(null), 2000);
@@ -216,12 +216,13 @@ export function ArenaBoard({
       document.removeEventListener("keydown", unlock);
     };
   }, [s.sound, active]);
-  const color = EFFECT_COLORS[s.element];\n  const terrainColor = TERRAIN_COLORS[s.terrain];
+  const color = EFFECT_COLORS[s.element];
+  const terrainColor = TERRAIN_COLORS[s.terrain];
   return (
     <div
-      className="arena-presentation"
-      aria-label="Arène de jeu"
-      style={{ "--arena-effect": color } as CSSProperties}
+      className={`arena-presentation terrain-${s.terrain}`}
+      aria-label={`Arène Kropki · terrain ${TERRAINS[s.terrain]}`}
+      style={{ "--arena-effect": color, "--terrain-glow": terrainColor, "--terrain-base": terrainColor + "18" } as CSSProperties}
     >
       <div className="arena-stage" data-terrain={s.terrain}>
         <GameBoard {...props} />
