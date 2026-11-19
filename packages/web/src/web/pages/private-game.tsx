@@ -182,14 +182,14 @@ function Room({ id }: { id: string }) {
               {data.player === 1 ? <LocalArenaAvatar /> : <i className="blue-dot" />}
               <strong>{data.blue.name}</strong>
               <span>
-                {score[1]} capturé{score[1] > 1 ? "s" : ""}
+                <span key={score[1]} className={score[1] > 0 ? "score-value score-value-active" : "score-value"}>{score[1]}</span> capturé{score[1] > 1 ? "s" : ""}
               </span>
             </div>
             <div className={view.turn === 2 && !ended ? "active" : ""}>
               {data.player === 2 ? <LocalArenaAvatar /> : <i className="red-dot" />}
               <strong>{data.red?.name ?? "En attente…"}</strong>
               <span>
-                {score[2]} capturé{score[2] > 1 ? "s" : ""}
+                <span key={score[2]} className={score[2] > 0 ? "score-value score-value-active" : "score-value"}>{score[2]}</span> capturé{score[2] > 1 ? "s" : ""}
               </span>
             </div>
           </div>
