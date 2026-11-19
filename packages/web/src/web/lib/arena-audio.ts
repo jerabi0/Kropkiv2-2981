@@ -9,14 +9,21 @@ export async function unlockArenaAudio() {
     return false;
   }
 }
-export function arenaSound(capture: boolean, element: number, liberated: boolean, terrain = 0) {
+export function arenaSound(capture: boolean, element: number, liberated: boolean, terrain = 0, sealStyle = 0) {
   if (!context || context.state !== "running" || document.hidden) return;
   const a = context,
     now = a.currentTime;
   const terrainRoots = [523, 110, 740, 196, 146, 330, 392, 220, 587, 262, 440, 82];
   const root = terrainRoots[terrain] ?? 440;
+  const sealIntervals = [
+    [0.5, 1, 2],
+    [0.42, 0.7, 1.4],
+    [0.6, 0.9, 1.8],
+    [1, 1.33, 1.8],
+    [0.35, 0.5, 1.5],
+  ][sealStyle] ?? [0.5, 1, 2];
   const notes = capture
-    ? liberated ? [root, root * 1.25, root * 1.5] : [root * 0.5, root, root * 2]
+    ? liberated ? [root, root * 1.25, root * 1.5] : sealIntervals.map((n) => root * n)
     : [root * (0.85 + element * 0.04)];
   notes.forEach((f, i) => {
     const o = a.createOscillator(),
