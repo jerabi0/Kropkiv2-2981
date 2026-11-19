@@ -245,7 +245,7 @@ export function GameBoard({
         <span key={feedback.id} className="capture-impact-flash" aria-hidden="true" />
       )}
       {feedback && (
-        <output className={`capture-toast ${feedback.liberated.length ? "capture-toast-reconquest" : "capture-toast-capture"}`} key={feedback.id} aria-live="polite">
+        <output className={`capture-toast ${feedback.liberated.length ? "capture-toast-reconquest" : "capture-toast-capture"}${majorCapture ? " capture-toast-major" : ""}`} key={feedback.id} aria-live="polite">
           <span className="capture-toast-title">
             {feedback.liberated.length ? "Territoire reconquis !" : "Capture !"}
           </span>
