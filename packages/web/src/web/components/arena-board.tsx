@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ComponentProps, type CSSProperties } 
 import { GameBoard } from "./game-board";
 import { ArenaControls } from "./arena-controls";
 import { ArenaAvatar } from "./arena-avatar";
-import { EFFECT_COLORS, SEALS, TERRAINS, TERRAIN_COLORS, useArenaSettings } from "../lib/arena-settings";
+import { EFFECT_COLORS, SEALS, SEAL_STYLES, TERRAINS, TERRAIN_COLORS, useArenaSettings } from "../lib/arena-settings";
 import { arenaSound, unlockArenaAudio } from "../lib/arena-audio";
 import type { Feedback } from "../lib/game-feedback";
 type Event = { id: string; x: number; y: number; player: number; feedback: Feedback | null };
@@ -129,6 +129,31 @@ function Seal({ style }: { style: number }) {
     </>
   );
 }
+function SealTreatment({ edges, style }: { edges: [number, number, number, number][]; style: number }) {
+  const vertices = [...new Map(
+    edges.flatMap(([x, y, nx, ny]) => [[x, y], [nx, ny]]).map(([x, y]) => [`${x}:${y}`, [x, y]] as const),
+  ).values()];
+  return (
+    <g className={`arena-seal-details seal-style-${style}`}>
+      {style === 0 && edges.map(([x, y, nx, ny], i) => {
+        const mx = (x + nx) * 16 + 26, my = (y + ny) * 16 + 26;
+        return <g key={i}><circle className="seal-rune-ring" cx={mx} cy={my} r="4" /><path className="seal-rune-mark" d={`M${mx} ${my - 5}v10m-5-5h10`} /></g>;
+      })}
+      {style === 1 && edges.map(([x, y, nx, ny], i) => {
+        const mx = (x + nx) * 16 + 26, my = (y + ny) * 16 + 26;
+        const angle = Math.atan2(ny - y, nx - x) * 180 / Math.PI;
+        return <ellipse key={i} className="seal-chain-link" cx={mx} cy={my} rx="6" ry="3" transform={`rotate(${angle} ${mx} ${my})`} />;
+      })}
+      {style === 2 && vertices.map(([x, y], i) => <rect key={i} className="seal-barrier-pillar" x={26 + x * 32 - 4} y={26 + y * 32 - 4} width="8" height="8" rx="1" />)}
+      {style === 3 && edges.filter((_, i) => i % 2 === 0).map(([x, y, nx, ny], i) => {
+        const mx = (x + nx) * 16 + 26, my = (y + ny) * 16 + 26;
+        const angle = Math.atan2(ny - y, nx - x) * 180 / Math.PI;
+        return <g key={i} className="seal-talisman" transform={`translate(${mx} ${my}) rotate(${angle})`}><rect x="-4" y="-7" width="8" height="14" rx="1" /><path d="M0-4v8m-2-2 2 2 2-2" /></g>;
+      })}
+      {style === 4 && edges.map(([x, y, nx, ny], i) => <line key={i} className="seal-cube-depth" x1={26 + x * 32 + 3} y1={26 + y * 32 - 3} x2={26 + nx * 32 + 3} y2={26 + ny * 32 - 3} />)}
+    </g>
+  );
+}
 export function ArenaBoard({
   active = true,
   ownPlayer = 1,
@@ -158,7 +183,7 @@ export function ArenaBoard({
         player: move.player,
         feedback: feedback ?? null,
       });
-      if (s.sound) arenaSound(!!feedback, s.element, !!feedback?.liberated.length, s.terrain);
+      if (s.sound) arenaSound(!!feedback, s.element, !!feedback?.liberated.length, s.terrain, s.sealStyle);
     } else if (
       props.feedback &&
       props.feedback !== lastFeedback.current &&
@@ -174,7 +199,7 @@ export function ArenaBoard({
         player: move.player,
         feedback: props.feedback,
       });
-      if (s.sound) arenaSound(true, s.element, !!props.feedback.liberated.length, s.terrain);
+      if (s.sound) arenaSound(true, s.element, !!props.feedback.liberated.length, s.terrain, s.sealStyle);
     }
   }, [props.game.moves, props.feedback, active, s.sound, s.element, s.terrain]);
   useEffect(() => {
@@ -253,7 +278,7 @@ export function ArenaBoard({
                 {props.game.zones
                   .filter((z) => event.feedback?.zones.includes(`${z.player}:${z.cells.join(",")}`))
                   .map((z, i) => (
-                    <g key={i} className="arena-boundary">
+                    <g key={i} className={`arena-boundary seal-style-${s.sealStyle}`}>
                       {z.edges.map(([x, y, nx, ny], j) => (
                         <line
                           key={j}
@@ -268,6 +293,7 @@ export function ArenaBoard({
                           }}
                         />
                       ))}
+                      <SealTreatment edges={z.edges} style={s.sealStyle} />
                     </g>
                   ))}
                 <g
@@ -299,7 +325,7 @@ export function ArenaBoard({
             <div>
               <strong>{event.feedback.liberated.length ? "RECONQUÊTE !" : "ENCERCLEMENT !"}</strong>
               <span>
-                {SEALS[s.seal]} · {event.player === 1 ? "Bleus" : "Rouges"}
+                {SEAL_STYLES[s.sealStyle]} · {event.player === 1 ? "Bleus" : "Rouges"}
               </span>
             </div>
           </div>
