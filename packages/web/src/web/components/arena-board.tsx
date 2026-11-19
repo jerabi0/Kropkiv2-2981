@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ComponentProps, type CSSProperties } from "react";
+import "../seal-styles.css";
 import { GameBoard } from "./game-board";
 import { ArenaControls } from "./arena-controls";
 import { ArenaAvatar } from "./arena-avatar";
