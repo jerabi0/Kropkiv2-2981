@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "../styles/capture-effects.css";
+import "../capture-effects.css";
 import { captured, legal, type Game } from "../lib/kropki";
 import { zoneKey, type Feedback } from "../lib/game-feedback";
 export const playerColors = ["", "#255bfa", "#f26367"];
