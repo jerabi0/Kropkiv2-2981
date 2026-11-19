@@ -259,13 +259,15 @@ export function ArenaBoard({
       stopArenaAmbience();
       return;
     }
+    let disposed = false;
     const syncAmbience = async () => {
       const unlocked = await unlockArenaAudio();
-      if (unlocked) startArenaAmbience(s.terrain, s.element, s.sealStyle);
+      // Ignore a late unlock if the user disabled sound or left the arena meanwhile.
+      if (unlocked && !disposed) startArenaAmbience(s.terrain, s.element, s.sealStyle);
     };
     const onVisibility = () => {
       if (document.hidden) stopArenaAmbience();
-      else startArenaAmbience(s.terrain, s.element, s.sealStyle);
+      else if (!disposed) startArenaAmbience(s.terrain, s.element, s.sealStyle);
     };
     // The sound toggle is opt-in; browsers only unlock audio after a user gesture.
     if (!document.hidden) startArenaAmbience(s.terrain, s.element, s.sealStyle);
@@ -273,6 +275,7 @@ export function ArenaBoard({
     document.addEventListener("keydown", syncAmbience);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
+      disposed = true;
       document.removeEventListener("pointerdown", syncAmbience);
       document.removeEventListener("keydown", syncAmbience);
       document.removeEventListener("visibilitychange", onVisibility);
