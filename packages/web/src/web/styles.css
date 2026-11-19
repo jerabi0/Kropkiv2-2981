@@ -4470,3 +4470,41 @@ dialog::backdrop {
 @media (prefers-reduced-motion: reduce) {
   .arena-stage::before { animation: none; }
 }
+
+/* Scellement progressif des captures : la frontière se ferme segment par segment. */
+.arena-boundary .arena-seal-edge {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: arena-seal-edge .42s cubic-bezier(.2,.75,.25,1) both;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+.arena-seal-pulse {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-dasharray: 5 7;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: arena-seal-pulse 1.35s ease-out .12s both;
+}
+@keyframes arena-seal-edge {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes arena-seal-pulse {
+  0% { opacity: 0; transform: scale(.55); }
+  25% { opacity: .85; }
+  100% { opacity: 0; transform: scale(1.22); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-boundary .arena-seal-edge {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+  .arena-seal-pulse {
+    animation: none;
+    opacity: .35;
+    transform: none;
+  }
+}
