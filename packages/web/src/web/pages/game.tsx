@@ -392,7 +392,7 @@ export default function GamePage() {
                       </span>
                     </div>
                     <div className="player-taken">
-                      <span>{score[2]}</span> points capturés
+                      <span key={score[2]} className={score[2] > 0 ? "score-value score-value-active" : "score-value"}>{score[2]}</span> points capturés
                     </div>
                     {view.turn === 2 && !view.ended && (
                       <span className="player-turn-indicator">
@@ -456,7 +456,7 @@ export default function GamePage() {
                       </span>
                     </div>
                     <div className="player-taken">
-                      <span>{score[1]}</span> points capturés
+                      <span key={score[1]} className={score[1] > 0 ? "score-value score-value-active" : "score-value"}>{score[1]}</span> points capturés
                     </div>
                     {view.turn === 1 && !view.ended && (
                       <span className="player-turn-indicator your-turn">À ton tour</span>
@@ -529,7 +529,7 @@ export default function GamePage() {
                             <strong>{p === 1 ? "Les bleus" : "Les rouges"}</strong>
                           </div>
                           <div className="score-number">
-                            {score[p]}
+                            <span key={score[p]} className={score[p] > 0 ? "score-value score-value-active" : "score-value"}>{score[p]}</span>
                             <span>capturés</span>
                           </div>
                         </div>
