@@ -6,7 +6,13 @@
 .capture-cell {
   transform-box: fill-box;
   transform-origin: center;
-  animation: capture-cell-reveal 520ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+/* Keep the original territory flash while revealing cells in sequence. */
+.new-capture-zone .territory-fill.capture-cell {
+  animation:
+    territory-flash 1.2s ease both,
+    capture-cell-reveal 520ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
 
 .new-capture-zone .territory-border {
