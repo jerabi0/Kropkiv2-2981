@@ -129,6 +129,9 @@ export function GameBoard({
             available = legal(game, x, y) && !locked;
           const focused = target?.[0] === x && target?.[1] === y;
           const changed = feedback?.captured.includes(i) || feedback?.liberated.includes(i);
+          const capturedIndex = feedback?.captured.indexOf(i) ?? -1;
+          const liberatedIndex = feedback?.liberated.indexOf(i) ?? -1;
+          const changeIndex = capturedIndex >= 0 ? capturedIndex : liberatedIndex;
           return (
             <g key={i}>
               {p ? (
@@ -188,6 +191,7 @@ export function GameBoard({
                   stroke={playerColors[feedback?.liberated.includes(i) ? p : game.territory[i]]}
                   strokeWidth="2"
                   className={`capture-ring ${feedback?.liberated.includes(i) ? "capture-ring-liberated" : "capture-ring-captured"}`}
+                  style={{ animationDelay: `${Math.min(Math.max(0, changeIndex), 32) * 22}ms` }}
                 />
               )}
               {focused && available && (
