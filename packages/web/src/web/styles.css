@@ -4976,3 +4976,29 @@ dialog::backdrop {
     animation: none !important;
   }
 }
+
+
+/* Onde d'impact à chaque pose : effet commun aux parties avec ou sans arène. */
+.game-board .move-placement-ripple {
+  fill: none;
+  stroke-width: 2;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+  animation: move-placement-ripple 560ms cubic-bezier(.16,.78,.25,1) both;
+}
+
+@keyframes move-placement-ripple {
+  0% { opacity: .85; transform: scale(.35); stroke-width: 3; }
+  65% { opacity: .5; transform: scale(1.35); stroke-width: 1.8; }
+  100% { opacity: 0; transform: scale(1.9); stroke-width: .6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-board .move-placement-ripple {
+    animation: none !important;
+    opacity: .2;
+    transform: none;
+  }
+}
