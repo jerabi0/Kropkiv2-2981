@@ -16,11 +16,12 @@ with sync_playwright() as p:
  page.get_by_role('button',name='Commencer la partie').click()
  for x,y in [(3,2),(3,3),(4,3),(10,10),(3,4),(11,10),(2,3)]:page.locator(f'[data-cell="{x}-{y}"]').click()
  assert '1' in page.locator('.score-number').first.inner_text()
- assert page.locator('.game-board line[stroke="#406be1"]').count()>0
+ assert page.locator('.game-board line[stroke="#255bfa"]').count()>0
  page.get_by_role('button',name='Historique').click();assert 'D3' in page.locator('.history-scroll').inner_text()
  page.screenshot(path='/home/user/kropki/arena-capture.png',full_page=True)
- page.get_by_role('button',name='Terminer',exact=True).click()
- page.get_by_role('button',name='Terminer la partie',exact=True).click();assert 'Les bleus remportent' in page.locator('.message').inner_text()
+ page.get_by_role('button',name='Abandonner',exact=True).click()
+ page.locator('#resigning').select_option('1')
+ page.get_by_role('button',name='Confirmer l’abandon',exact=True).click();assert 'Les rouges remportent' in page.locator('.message').inner_text()
  page.get_by_role('button',name='Nouvelle partie',exact=True).click()
  page.locator('.dialog-modes').get_by_role('button',name='L’ordinateur').click()
  page.get_by_role('button',name='Commencer la partie').click()

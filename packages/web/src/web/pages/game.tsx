@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "wouter";
 import {
   ArrowUpRight,
   ArrowRight,
@@ -20,25 +21,33 @@ import {
   Target,
   Swords,
   HardDrive,
+  GraduationCap,
 } from "lucide-react";
+import { createGame, replay, legal, scores, computerMove } from "../lib/kropki";
 import {
-  createGame,
-  play,
-  replay,
-  scores,
-  captured,
-  legal,
-  computerMove,
-  type Game,
-} from "../lib/kropki";
-const colors = ["", "#406be1", "#e46a58"];
+  CADENCES,
+  createMatch,
+  settleMatch,
+  moveMatch,
+  undoMatch,
+  pauseMatch,
+  resumeMatch,
+  resignMatch,
+  type TimedMatch,
+} from "../lib/timed-game";
+import { restoreLocalMatch } from "../lib/local-match";
+import { needsMatchSave, type LocalSave } from "../lib/match-persistence";
+import { MatchClock } from "../components/match-clock";
+import { LocalArenaAvatar } from "../components/arena-avatar";
+import { TacticalBoard } from "../components/tactical-board";
+import { AccountMenu } from "../components/online-shell";
+import { ReplayControls } from "../components/replay-controls";
+import { Tutorial } from "../components/tutorial";
+import { gameFeedback, reviewPosition, type Feedback } from "../lib/game-feedback";
+const colors = ["", "#255bfa", "#f26367"];
 function initial() {
-  try {
-    const s = JSON.parse(localStorage.getItem("kropki-v1") || "null");
-    if (s?.game?.moves && [13, 17, 21].includes(s.game.w))
-      return { ...s, game: { ...replay(s.game.moves, s.game.w, s.game.h), ended: !!s.game.ended } };
-  } catch {}
-  return { game: createGame(), mode: "computer", level: "normal" };
+  try { return restoreLocalMatch(localStorage.getItem("kropki-v1")); }
+  catch { return {...restoreLocalMatch(null), warning:"Stockage local indisponible : ta partie ne sera pas conservée après fermeture."}; }
 }
 function Emblem({ small = false }: { small?: boolean }) {
   return (
@@ -51,9 +60,9 @@ function Emblem({ small = false }: { small?: boolean }) {
       <rect x="1" y="1" width="208" height="163" fill="url(#mini-grid)" />
       <path
         d="M53 79L79 27L131 27L157 79L131 131L79 131Z"
-        fill="#406be1"
+        fill="#255bfa"
         fillOpacity=".09"
-        stroke="#406be1"
+        stroke="#255bfa"
         strokeWidth="1.8"
       />
       {[
@@ -85,78 +94,157 @@ function Emblem({ small = false }: { small?: boolean }) {
 }
 export default function GamePage() {
   const [stored] = useState(initial);
-  const [game, setGame] = useState<Game>(stored.game);
+  const [match, setMatch] = useState<TimedMatch>(stored.match);
+  const game = match.game;
+  const [cadence, setCadence] = useState(3);
+  const [resigning, setResigning] = useState<1 | 2>(1);
   const [mode, setMode] = useState<string>(stored.mode);
   const [level, setLevel] = useState(stored.level);
   const [modal, setModal] = useState<"rules" | "new" | "end" | null>(null);
   const [newMode, setNewMode] = useState(mode);
   const [size, setSize] = useState(game.w);
   const [newLevel, setNewLevel] = useState(level);
-  const [hover, setHover] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
+  const [storageWarning, setStorageWarning] = useState(stored.warning);
+  const lastSaved = useRef<LocalSave | null>(null);
   const [panel, setPanel] = useState<"play" | "history">("play");
   const dialog = useRef<HTMLDialogElement>(null);
-  const score = scores(game);
-  const last = game.moves.at(-1);
-  const ai = mode === "computer" && game.turn === 2 && !game.ended;
+  const [review, setReview] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [tutorial, setTutorial] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const view = useMemo(
+    () =>
+      review === null
+        ? game
+        : {
+            ...replay(game.moves.slice(0, review), game.w, game.h),
+            ended: review === game.moves.length && game.ended,
+          },
+    [game, review],
+  );
+  const score = scores(view);
+  const ai = mode === "computer" && game.turn === 2 && !game.ended && review === null && !tutorial;
+  const commit = useCallback((x: number, y: number) => {
+    setMatch((current) => {
+      const next = moveMatch(current, x, y, Date.now());
+      setFeedback(gameFeedback(current.game, next.game));
+      return next;
+    });
+  }, []);
   useEffect(() => {
+    const paused = review !== null || tutorial;
+    setMatch((current) =>
+      paused ? pauseMatch(current, Date.now()) : resumeMatch(current, Date.now()),
+    );
+  }, [review, tutorial]);
+  useEffect(() => {
+    const tick = () => setMatch((current) => settleMatch(current, Date.now()));
+    const timer = setInterval(tick, 200);
+    window.addEventListener("focus", tick);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", tick);
+    };
+  }, []);
+  function enterReview(position: number) {
+    setReview(reviewPosition(game, position));
+    setPlaying(false);
+    setFeedback(null);
+    setPanel("history");
+  }
+  function exitReview() {
+    setReview(null);
+    setPlaying(false);
+  }
+  function launchTutorial() {
+    setTutorial(true);
+    setModal(null);
+    setPlaying(false);
+    setFeedback(null);
+  }
+  useEffect(() => {
+    if (!feedback) return;
+    const t = setTimeout(() => setFeedback(null), 3000);
+    return () => clearTimeout(t);
+  }, [feedback]);
+  useEffect(() => {
+    if (!playing || review === null || tutorial || modal) return;
+    if (review >= game.moves.length) {
+      setPlaying(false);
+      return;
+    }
+    const t = setTimeout(() => setReview(review + 1), 900);
+    return () => clearTimeout(t);
+  }, [playing, review, game.moves.length, tutorial, modal]);
+  useEffect(() => {
+    const next = { match, mode, level };
+    if (!needsMatchSave(lastSaved.current, next)) return;
+    lastSaved.current = next;
     try {
-      localStorage.setItem("kropki-v1", JSON.stringify({ game, mode, level }));
-    } catch {}
-  }, [game, mode, level]);
+      localStorage.setItem("kropki-v1", JSON.stringify({ ...match, mode, level }));
+    } catch { setStorageWarning("Stockage local indisponible : ta partie ne sera pas conservée après fermeture."); }
+  }, [match, mode, level]);
   useEffect(() => {
-    if (!ai) {
+    if (!ai || modal) {
       return;
     }
     const t = setTimeout(() => {
       const m = computerMove(game, level);
-      if (m) setGame(play(game, ...m));
+      if (m) commit(...m);
     }, 420);
     return () => clearTimeout(t);
-  }, [game, ai, level]);
+  }, [game, ai, level, modal, commit]);
   useEffect(() => {
     if (modal) dialog.current?.showModal();
     else dialog.current?.close();
   }, [modal]);
+  useEffect(() => {
+    if (game.ended && match.result?.reason === "time") setModal(null);
+  }, [game.ended, match.result?.reason]);
   function move(x: number, y: number) {
-    if (ai || game.ended) return;
+    if (ai || game.ended || review !== null || tutorial) return;
     if (!legal(game, x, y)) {
       setNotice("Cette intersection est déjà occupée ou capturée.");
       return;
     }
-    const n = play(game, x, y);
-    const next = scores(n);
-    setNotice(
-      next[1] !== score[1] || next[2] !== score[2]
-        ? "Un territoire vient de changer de mains."
-        : "",
-    );
-    setGame(n);
+    setNotice("");
+    commit(x, y);
   }
   function undo() {
-    if (!game.moves.length) return;
+    if (!game.moves.length || review !== null) return;
     let count = 1;
     if (mode === "computer" && game.moves.at(-1)?.player === 2) count = 2;
-    setGame(replay(game.moves.slice(0, -count), game.w, game.h));
+    setFeedback(null);
+    setMatch((current) => undoMatch(current, count, Date.now()));
     setNotice("Dernier coup annulé.");
   }
   function start() {
+    exitReview();
+    setTutorial(false);
+    setFeedback(null);
+    setPanel("play");
     setMode(newMode);
     setLevel(newLevel);
-    setGame(createGame(size, size === 13 ? 11 : size === 21 ? 17 : 13));
+    setMatch(
+      createMatch(createGame(size, size === 13 ? 11 : size === 21 ? 17 : 13), cadence, Date.now()),
+    );
     setModal(null);
     setNotice("Nouvelle partie. À toi de poser le premier point.");
   }
-  const spacing = 32,
-    pad = 26,
-    vw = (game.w - 1) * spacing + pad * 2,
-    vh = (game.h - 1) * spacing + pad * 2;
+  const winningPlayer = match.result?.winner ?? null;
   const winner =
-    score[1] === score[2]
+    winningPlayer === null
       ? "Égalité parfaite."
-      : score[1] > score[2]
+      : winningPlayer === 1
         ? "Les bleus remportent la partie."
         : "Les rouges remportent la partie.";
+  const resultText =
+    match.result?.reason === "time"
+      ? "Temps écoulé : le score décide. "
+      : match.result?.reason === "resign"
+        ? `${match.result.resignedBy === 1 ? "Les bleus abandonnent" : "Les rouges abandonnent"}. `
+        : "Plateau terminé. ";
   return (
     <div className="arena" id="top">
       <aside className="navigation-rail" aria-label="Navigation principale">
@@ -208,6 +296,14 @@ export default function GamePage() {
             <CircleHelp size={22} />
             <span>Règles du jeu</span>
           </button>
+          <button className="rail-link" aria-label="Tutoriel interactif" onClick={launchTutorial}>
+            <GraduationCap size={22} />
+            <span>Apprendre</span>
+          </button>
+          <Link href="/entrainement" className="rail-link" aria-label="Entraînement avancé">
+            <Target size={22} />
+            <span>Entraînement</span>
+          </Link>
         </nav>
         <div className="rail-bottom">
           <div className="local-version">
@@ -234,6 +330,7 @@ export default function GamePage() {
             <ShieldCheck size={15} />
             <span>Sauvegarde automatique</span>
           </div>
+          <AccountMenu />
         </header>
         <main className="arena-main">
           <div className="page-heading">
@@ -249,466 +346,405 @@ export default function GamePage() {
               <span>Les règles</span>
             </button>
           </div>
-          <section id="plateau" className="game-area">
-            <div className="board-column">
-              <div
-                className={
-                  "table-player opponent " + (game.turn === 2 && !game.ended ? "is-playing" : "")
-                }
-              >
-                <div className="table-avatar red-avatar">
-                  {mode === "computer" ? <Bot size={27} /> : <UserRound size={25} />}
-                </div>
-                <div className="table-name">
-                  <strong>{mode === "computer" ? "Ordinateur" : "Joueur 2"}</strong>
-                  <span>
-                    <i style={{ background: colors[2] }} /> Les rouges ·{" "}
-                    {mode === "computer"
-                      ? level === "easy"
-                        ? "Découverte"
-                        : "Tactique"
-                      : "Même écran"}
-                  </span>
-                </div>
-                <div className="player-taken">
-                  <span>{score[2]}</span> points capturés
-                </div>
-                {game.turn === 2 && !game.ended && (
-                  <span className="player-turn-indicator">{ai ? "Réfléchit…" : "À son tour"}</span>
-                )}
-              </div>
-              <div className="board-heading">
-                <div className="board-title">
-                  <Grid2X2 size={13} />
-                  <span>
-                    {game.w} × {game.h}
-                  </span>
-                  <span className="board-variant">Territoire</span>
-                </div>
-                <div className="turn-label" aria-live="polite">
-                  <span style={{ background: game.ended ? "#a7a59b" : colors[game.turn] }} />
-                  {game.ended
-                    ? "Partie terminée"
-                    : ai
-                      ? "L’ordinateur réfléchit…"
-                      : game.turn === 1
-                        ? "Aux bleus de jouer"
-                        : "Aux rouges de jouer"}
-                </div>
-              </div>
-              <div className={"board-paper " + (ai ? "is-thinking" : "")}>
-                <svg
-                  className="game-board"
-                  viewBox={`0 0 ${vw} ${vh}`}
-                  aria-label="Plateau Kropki : sélectionne une intersection pour poser un point"
-                  onMouseLeave={() => setHover(null)}
-                >
-                  {Array.from({ length: game.w }, (_, x) => (
-                    <text
-                      key={"cx" + x}
-                      x={pad + x * spacing}
-                      y={12}
-                      className="coordinate"
-                      textAnchor="middle"
-                    >
-                      {String.fromCharCode(65 + x)}
-                    </text>
-                  ))}
-                  {Array.from({ length: game.h }, (_, y) => (
-                    <text
-                      key={"cy" + y}
-                      x={9}
-                      y={pad + y * spacing + 3}
-                      className="coordinate"
-                      textAnchor="middle"
-                    >
-                      {y + 1}
-                    </text>
-                  ))}
-                  {Array.from({ length: game.w }, (_, x) => (
-                    <line
-                      key={"v" + x}
-                      x1={pad + x * spacing}
-                      x2={pad + x * spacing}
-                      y1={pad}
-                      y2={vh - pad}
-                      className="grid-line"
-                    />
-                  ))}
-                  {Array.from({ length: game.h }, (_, y) => (
-                    <line
-                      key={"h" + y}
-                      y1={pad + y * spacing}
-                      y2={pad + y * spacing}
-                      x1={pad}
-                      x2={vw - pad}
-                      className="grid-line"
-                    />
-                  ))}
-                  {game.zones.map((z, i) => (
-                    <g key={i} pointerEvents="none">
-                      {z.cells.map((c) => {
-                        const rw = game.w * 2 + 3;
-                        return (
-                          <rect
-                            key={c}
-                            x={pad + (((c % rw) - 2) * spacing) / 2 - spacing / 4}
-                            y={pad + ((Math.floor(c / rw) - 2) * spacing) / 2 - spacing / 4}
-                            width={spacing / 2 + 0.1}
-                            height={spacing / 2 + 0.1}
-                            fill={colors[z.player]}
-                            fillOpacity=".10"
-                          />
-                        );
-                      })}
-                      {z.edges.map(([x, y, nx, ny], j) => (
-                        <line
-                          key={j}
-                          x1={pad + x * spacing}
-                          y1={pad + y * spacing}
-                          x2={pad + nx * spacing}
-                          y2={pad + ny * spacing}
-                          stroke={colors[z.player]}
-                          strokeWidth="2"
-                        />
-                      ))}
-                    </g>
-                  ))}
-                  {game.board.map((p, i) => {
-                    const x = i % game.w,
-                      y = Math.floor(i / game.w),
-                      cx = pad + x * spacing,
-                      cy = pad + y * spacing,
-                      available = legal(game, x, y) && !ai;
-                    return (
-                      <g key={i}>
-                        {p ? (
-                          <>
-                            <circle
-                              cx={cx}
-                              cy={cy}
-                              r={captured(game, i) ? 4.6 : 6.2}
-                              fill={colors[p]}
-                              opacity={captured(game, i) ? 0.42 : 1}
-                            />
-                            {captured(game, i) && (
-                              <path
-                                d={`M${cx - 2} ${cy - 2}l4 4m-4 0l4-4`}
-                                stroke="#c2d1a8"
-                                strokeWidth="1"
-                              />
-                            )}
-                            {last?.x === x && last?.y === y && (
-                              <circle
-                                cx={cx}
-                                cy={cy}
-                                r="11"
-                                fill="none"
-                                stroke={colors[p]}
-                                strokeWidth="1"
-                                opacity=".55"
-                              />
-                            )}
-                          </>
-                        ) : (
-                          <circle
-                            cx={cx}
-                            cy={cy}
-                            r="1.3"
-                            fill={game.territory[i] ? colors[game.territory[i]] : "#7e916a"}
-                            opacity=".7"
-                          />
-                        )}
-                        {hover === i && available && (
-                          <circle cx={cx} cy={cy} r="6.2" fill={colors[game.turn]} opacity=".4" />
-                        )}
-                        <foreignObject
-                          x={cx - spacing / 2}
-                          y={cy - spacing / 2}
-                          width={spacing}
-                          height={spacing}
-                        >
-                          <button
-                            data-cell={`${x}-${y}`}
-                            tabIndex={available ? 0 : -1}
-                            aria-label={`${String.fromCharCode(65 + x)}${y + 1}${p ? ", occupée" : game.territory[i] ? ", capturée" : ""}`}
-                            aria-disabled={!available}
-                            className={
-                              "cell-button " + (available ? "intersection" : "unavailable")
-                            }
-                            onMouseEnter={() => setHover(i)}
-                            onClick={() => move(x, y)}
-                          />
-                        </foreignObject>
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-
-              <div
-                className={
-                  "table-player you " + (game.turn === 1 && !game.ended ? "is-playing" : "")
-                }
-              >
-                <div className="table-avatar blue-avatar">
-                  <UserRound size={25} />
-                </div>
-                <div className="table-name">
-                  <strong>{mode === "computer" ? "Toi" : "Joueur 1"}</strong>
-                  <span>
-                    <i style={{ background: colors[1] }} /> Les bleus ·{" "}
-                    {mode === "computer" ? "Prêt à conquérir" : "Même écran"}
-                  </span>
-                </div>
-                <div className="player-taken">
-                  <span>{score[1]}</span> points capturés
-                </div>
-                {game.turn === 1 && !game.ended && (
-                  <span className="player-turn-indicator your-turn">À ton tour</span>
-                )}
-              </div>
-              <div className="board-bottom">
-                <span>
-                  <span className="ring-key" /> Dernier point joué
-                </span>
-                <span>
-                  {game.moves.length} {game.moves.length > 1 ? "coups joués" : "coup joué"}
-                </span>
-              </div>
-              <div
-                className={"message " + (game.ended ? "finished-message" : "")}
-                aria-live="polite"
-              >
-                {game.ended
-                  ? winner
-                  : notice || "Clique sur une intersection libre pour poser ton point."}
-              </div>
-            </div>
-            <aside className="right-column">
-              <div className="game-sidebar">
-                <div className="panel-heading">
-                  <div>
-                    <Swords size={21} />
-                    <h2>Ta partie</h2>
-                  </div>
-                  <span className={"live-chip " + (game.ended ? "ended" : "")}>
-                    <i />
-                    {game.ended ? "Terminée" : "En cours"}
-                  </span>
-                </div>
-                <div className="score-list">
-                  {([1, 2] as const).map((p) => (
-                    <div
-                      key={p}
-                      className={
-                        "player-score " + (game.turn === p && !game.ended ? "current" : "")
-                      }
-                    >
-                      <div className="score-owner">
-                        <span style={{ background: colors[p] }} />
-                        <strong>{p === 1 ? "Les bleus" : "Les rouges"}</strong>
-                      </div>
-                      <div className="score-number">
-                        {score[p]}
-                        <span>capturés</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="panel-tabs">
-                  <button
-                    className={panel === "play" ? "active" : ""}
-                    aria-pressed={panel === "play"}
-                    onClick={() => setPanel("play")}
+          {tutorial ? (
+            <>
+              <MatchClock
+                remaining={match.clock.remaining}
+                minutes={match.clock.minutes}
+                waiting={!match.clock.started}
+                    paused={match.clock.paused}
+                ended={game.ended}
+              />
+              <Tutorial onClose={() => setTutorial(false)} />
+            </>
+          ) : (
+            <>
+              {storageWarning && <output className="message">{storageWarning}</output>}
+              <section id="plateau" className="game-area">
+                <div className="board-column">
+                  <MatchClock
+                    remaining={match.clock.remaining}
+                    minutes={match.clock.minutes}
+                    waiting={!match.clock.started}
+                    paused={match.clock.paused}
+                    ended={game.ended}
+                    historical={review === null ? undefined : (match.snapshots[review] ?? null)}
+                  />
+                  <div
+                    className={
+                      "table-player opponent " +
+                      (view.turn === 2 && !view.ended ? "is-playing" : "")
+                    }
                   >
-                    <Grid2X2 size={15} /> Partie
-                  </button>
-                  <button
-                    className={panel === "history" ? "active" : ""}
-                    aria-pressed={panel === "history"}
-                    onClick={() => setPanel("history")}
-                  >
-                    <History size={15} /> Historique <span>{game.moves.length}</span>
-                  </button>
-                </div>
-                {panel === "play" ? (
-                  <div className="play-panel">
-                    <span className="field-caption">MODE DE JEU</span>
-                    <div className="mode-selector" aria-label="Mode de jeu">
-                      <button
-                        className={mode === "computer" ? "active" : ""}
-                        onClick={() => {
-                          setNewMode("computer");
-                          setNewLevel(level);
-                          setSize(game.w);
-                          setModal("new");
-                        }}
-                      >
-                        <Bot size={18} /> Ordinateur
-                      </button>
-                      <button
-                        className={mode === "local" ? "active" : ""}
-                        onClick={() => {
-                          setNewMode("local");
-                          setSize(game.w);
-                          setModal("new");
-                        }}
-                      >
-                        <Users size={18} /> À deux
-                      </button>
+                    <div className="table-avatar red-avatar">
+                      {mode === "computer" ? <Bot size={27} /> : <UserRound size={25} />}
                     </div>
-                    <div className="mode-description">
-                      {mode === "computer"
-                        ? `Toi contre l’ordinateur · ${level === "easy" ? "Découverte" : "Tactique"}`
-                        : "Deux joueurs, un même écran"}
-                    </div>
-                    <div className="game-facts">
-                      <div>
-                        <span>Plateau</span>
-                        <strong>
-                          {game.w} × {game.h}
-                        </strong>
-                      </div>
-                      <div>
-                        <span>Règles</span>
-                        <strong>Territoire</strong>
-                      </div>
-                      <div>
-                        <span>Objectif</span>
-                        <strong>Capturer le plus de points</strong>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="history-panel">
-                    <div className="history-heading">
-                      <span>COUP</span>
+                    <div className="table-name">
+                      <strong>{mode === "computer" ? "Ordinateur" : "Joueur 2"}</strong>
                       <span>
-                        <i className="blue-dot" /> BLEUS
-                      </span>
-                      <span>
-                        <i className="red-dot" /> ROUGES
+                        <i style={{ background: colors[2] }} /> Les rouges ·{" "}
+                        {mode === "computer"
+                          ? level === "easy"
+                            ? "Découverte"
+                            : "Tactique"
+                          : "Même écran"}
                       </span>
                     </div>
-                    {game.moves.length ? (
-                      <div className="history-scroll">
-                        {Array.from({ length: Math.ceil(game.moves.length / 2) }, (_, i) => {
-                          const a = game.moves[i * 2],
-                            b = game.moves[i * 2 + 1];
-                          return (
-                            <div className="history-row" key={i}>
-                              <span>{i + 1}.</span>
-                              <strong>{a ? String.fromCharCode(65 + a.x) + (a.y + 1) : "—"}</strong>
-                              <strong>{b ? String.fromCharCode(65 + b.x) + (b.y + 1) : "—"}</strong>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="history-empty">
-                        <History size={28} />
-                        <strong>Le premier point t’attend.</strong>
-                        <p>
-                          Les coordonnées de chaque coup
-                          <br />
-                          apparaîtront ici.
-                        </p>
-                      </div>
+                    <div className="player-taken">
+                      <span>{score[2]}</span> points capturés
+                    </div>
+                    {view.turn === 2 && !view.ended && (
+                      <span className="player-turn-indicator">
+                        {ai ? "Réfléchit…" : "À son tour"}
+                      </span>
                     )}
                   </div>
-                )}
-                <div className="panel-controls">
-                  <button
-                    className="primary-button"
-                    onClick={() => {
-                      setNewMode(mode);
-                      setSize(game.w);
-                      setNewLevel(level);
-                      setModal("new");
-                    }}
+                  <div className="board-heading">
+                    <div className="board-title">
+                      <Grid2X2 size={13} />
+                      <span>
+                        {game.w} × {game.h}
+                      </span>
+                      <span className="board-variant">Territoire</span>
+                    </div>
+                    <div className="turn-label" aria-live="polite">
+                      <span style={{ background: view.ended ? "#a7a59b" : colors[view.turn] }} />
+                      {view.ended
+                        ? "Partie terminée"
+                        : ai
+                          ? "L’ordinateur réfléchit…"
+                          : view.turn === 1
+                            ? "Aux bleus de jouer"
+                            : "Aux rouges de jouer"}
+                    </div>
+                  </div>
+                  {review !== null && (
+                    <ReplayControls
+                      position={review}
+                      total={game.moves.length}
+                      playing={playing}
+                      onChange={enterReview}
+                      onPlay={() => {
+                        if (review === game.moves.length) setReview(0);
+                        setPlaying(!playing);
+                      }}
+                      onExit={exitReview}
+                    />
+                  )}
+                  <TacticalBoard
+                    game={view}
+                    active={review === null}
+                    locked={ai || review !== null}
+                    onMove={move}
+                    feedback={review === null ? feedback : null}
+                  />
+
+                  <div
+                    className={
+                      "table-player you " + (view.turn === 1 && !view.ended ? "is-playing" : "")
+                    }
                   >
-                    <Grid2X2 size={20} /> Nouvelle partie <ArrowRight size={18} />
-                  </button>
-                  <div className="secondary-actions">
-                    <button disabled={!game.moves.length} onClick={undo}>
-                      <Undo2 size={17} /> Annuler
-                    </button>
-                    <button
-                      disabled={game.ended || !game.moves.length}
-                      onClick={() => setModal("end")}
-                    >
-                      <Flag size={16} /> Terminer
-                    </button>
+                    <div className="table-avatar blue-avatar">
+                      <LocalArenaAvatar />
+                    </div>
+                    <div className="table-name">
+                      <strong>{mode === "computer" ? "Toi" : "Joueur 1"}</strong>
+                      <span>
+                        <i style={{ background: colors[1] }} /> Les bleus ·{" "}
+                        {mode === "computer" ? "Prêt à conquérir" : "Même écran"}
+                      </span>
+                    </div>
+                    <div className="player-taken">
+                      <span>{score[1]}</span> points capturés
+                    </div>
+                    {view.turn === 1 && !view.ended && (
+                      <span className="player-turn-indicator your-turn">À ton tour</span>
+                    )}
+                  </div>
+                  <div className="board-bottom">
+                    <span>
+                      <span className="ring-key" /> Dernier point joué
+                    </span>
+                    <span>
+                      {view.moves.length} {view.moves.length > 1 ? "coups joués" : "coup joué"}
+                    </span>
+                  </div>
+                  <div
+                    className={"message " + (view.ended ? "finished-message" : "")}
+                    aria-live="polite"
+                  >
+                    {view.ended
+                      ? resultText + winner
+                      : review !== null
+                        ? `Relecture : coup ${review} sur ${game.moves.length}. Le plateau est en lecture seule.`
+                        : notice || "Sélectionne une intersection libre, puis confirme (ou active le placement direct)."}
                   </div>
                 </div>
-              </div>
-              <div className="tip">
-                <div className="tip-title">
-                  <Lightbulb size={18} />
-                  <span>Le coup d’avance</span>
+                <aside className="right-column">
+                  <div className="game-sidebar">
+                    <div className="panel-heading">
+                      <div>
+                        <Swords size={21} />
+                        <h2>Ta partie</h2>
+                      </div>
+                      <span className={"live-chip " + (view.ended ? "ended" : "")}>
+                        <i />
+                        {review !== null ? "Relecture" : view.ended ? "Terminée" : "En cours"}
+                      </span>
+                    </div>
+                    <div className="score-list">
+                      {([1, 2] as const).map((p) => (
+                        <div
+                          key={p}
+                          className={
+                            "player-score " + (view.turn === p && !view.ended ? "current" : "")
+                          }
+                        >
+                          <div className="score-owner">
+                            <span style={{ background: colors[p] }} />
+                            <strong>{p === 1 ? "Les bleus" : "Les rouges"}</strong>
+                          </div>
+                          <div className="score-number">
+                            {score[p]}
+                            <span>capturés</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="panel-tabs">
+                      <button
+                        className={panel === "play" ? "active" : ""}
+                        aria-pressed={panel === "play"}
+                        onClick={() => setPanel("play")}
+                      >
+                        <Grid2X2 size={15} /> Partie
+                      </button>
+                      <button
+                        className={panel === "history" ? "active" : ""}
+                        aria-pressed={panel === "history"}
+                        onClick={() => setPanel("history")}
+                      >
+                        <History size={15} /> Historique <span>{game.moves.length}</span>
+                      </button>
+                    </div>
+                    {panel === "play" ? (
+                      <div className="play-panel">
+                        <span className="field-caption">MODE DE JEU</span>
+                        <div className="mode-selector" aria-label="Mode de jeu">
+                          <button
+                            className={mode === "computer" ? "active" : ""}
+                            onClick={() => {
+                              setNewMode("computer");
+                              setNewLevel(level);
+                              setSize(game.w);
+                              setModal("new");
+                            }}
+                          >
+                            <Bot size={18} /> Ordinateur
+                          </button>
+                          <button
+                            className={mode === "local" ? "active" : ""}
+                            onClick={() => {
+                              setNewMode("local");
+                              setSize(game.w);
+                              setModal("new");
+                            }}
+                          >
+                            <Users size={18} /> À deux
+                          </button>
+                        </div>
+                        <div className="mode-description">
+                          {mode === "computer"
+                            ? `Toi contre l’ordinateur · ${level === "easy" ? "Découverte" : "Tactique"}`
+                            : "Deux joueurs, un même écran"}
+                        </div>
+                        <div className="game-facts">
+                          <div>
+                            <span>Plateau</span>
+                            <strong>
+                              {game.w} × {game.h}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>Règles</span>
+                            <strong>Territoire</strong>
+                          </div>
+                          <div>
+                            <span>Durée totale</span>
+                            <strong>{match.clock.minutes} min au total</strong>
+                          </div>
+                          <div>
+                            <span>Objectif</span>
+                            <strong>Capturer le plus de points</strong>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="history-panel">
+                        <div className="history-heading">
+                          <span>COUP</span>
+                          <span>
+                            <i className="blue-dot" /> BLEUS
+                          </span>
+                          <span>
+                            <i className="red-dot" /> ROUGES
+                          </span>
+                        </div>
+                        {game.moves.length ? (
+                          <div className="history-scroll">
+                            {Array.from({ length: Math.ceil(game.moves.length / 2) }, (_, i) => {
+                              const a = game.moves[i * 2],
+                                b = game.moves[i * 2 + 1];
+                              return (
+                                <div className="history-row" key={i}>
+                                  <span>{i + 1}.</span>
+                                  <button
+                                    disabled={!a}
+                                    aria-label={`Revoir le coup ${i * 2 + 1} : ${a ? String.fromCharCode(65 + a.x) + (a.y + 1) : "—"}`}
+                                    className={review === i * 2 + 1 ? "selected-move" : ""}
+                                    onClick={() => enterReview(i * 2 + 1)}
+                                  >
+                                    {a ? String.fromCharCode(65 + a.x) + (a.y + 1) : "—"}
+                                  </button>
+                                  <button
+                                    disabled={!b}
+                                    aria-label={`Revoir le coup ${i * 2 + 2} : ${b ? String.fromCharCode(65 + b.x) + (b.y + 1) : "—"}`}
+                                    className={review === i * 2 + 2 ? "selected-move" : ""}
+                                    onClick={() => enterReview(i * 2 + 2)}
+                                  >
+                                    {b ? String.fromCharCode(65 + b.x) + (b.y + 1) : "—"}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="history-empty">
+                            <History size={28} />
+                            <strong>Le premier point t’attend.</strong>
+                            <p>
+                              Les coordonnées de chaque coup
+                              <br />
+                              apparaîtront ici.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="panel-controls">
+                      {game.moves.length > 0 && (
+                        <button
+                          className="review-entry"
+                          onClick={() => (review === null ? enterReview(0) : exitReview())}
+                        >
+                          <History size={16} />
+                          {review === null ? "Revoir la partie" : "Retour à la partie"}
+                          <ArrowRight size={14} />
+                        </button>
+                      )}
+                      <button
+                        className="primary-button"
+                        onClick={() => {
+                          setNewMode(mode);
+                          setSize(game.w);
+                          setNewLevel(level);
+                          setModal("new");
+                        }}
+                      >
+                        <Grid2X2 size={20} /> Nouvelle partie <ArrowRight size={18} />
+                      </button>
+                      <div className="secondary-actions">
+                        <button
+                          disabled={game.ended || !game.moves.length || review !== null}
+                          onClick={undo}
+                        >
+                          <Undo2 size={17} /> Annuler
+                        </button>
+                        <button
+                          disabled={game.ended || review !== null}
+                          onClick={() => {
+                            setResigning(mode === "computer" ? 1 : game.turn);
+                            setModal("end");
+                          }}
+                        >
+                          <Flag size={16} /> Abandonner
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="tip">
+                    <div className="tip-title">
+                      <Lightbulb size={18} />
+                      <span>Le coup d’avance</span>
+                    </div>
+                    <p>
+                      Les diagonales comptent aussi. Relie tes points voisins pour fermer le piège.
+                    </p>
+                    <svg viewBox="0 0 150 40" aria-hidden="true">
+                      <path
+                        d="M12 30L40 8L68 30L96 8L124 30"
+                        fill="none"
+                        stroke="#9bc35d"
+                        strokeWidth="2"
+                      />
+                      {[
+                        [12, 30],
+                        [40, 8],
+                        [68, 30],
+                        [96, 8],
+                        [124, 30],
+                      ].map(([x, y], i) => (
+                        <circle key={i} cx={x} cy={y} r="4" fill="#9bc35d" />
+                      ))}
+                    </svg>
+                    <button onClick={() => setModal("rules")}>
+                      Découvrir les règles <ArrowUpRight size={14} />
+                    </button>
+                    <button className="tutorial-entry" onClick={launchTutorial}>
+                      <GraduationCap size={16} /> Essayer le tutoriel
+                    </button>
+                  </div>
+                  <div className="device-note">
+                    <HardDrive size={14} />
+                    <span>Ta partie reste sur cet appareil.</span>
+                  </div>
+                </aside>
+              </section>
+              <section className="quick-guide">
+                <div className="guide-title">
+                  <Target size={19} />
+                  <h2>Simple à apprendre. Subtil à maîtriser.</h2>
                 </div>
-                <p>Les diagonales comptent aussi. Relie tes points voisins pour fermer le piège.</p>
-                <svg viewBox="0 0 150 40" aria-hidden="true">
-                  <path
-                    d="M12 30L40 8L68 30L96 8L124 30"
-                    fill="none"
-                    stroke="#9bc35d"
-                    strokeWidth="2"
-                  />
-                  {[
-                    [12, 30],
-                    [40, 8],
-                    [68, 30],
-                    [96, 8],
-                    [124, 30],
-                  ].map(([x, y], i) => (
-                    <circle key={i} cx={x} cy={y} r="4" fill="#9bc35d" />
-                  ))}
-                </svg>
-                <button onClick={() => setModal("rules")}>
-                  Découvrir les règles <ArrowUpRight size={14} />
-                </button>
-              </div>
-              <div className="device-note">
-                <HardDrive size={14} />
-                <span>Ta partie reste sur cet appareil.</span>
-              </div>
-            </aside>
-          </section>
-          <section className="quick-guide">
-            <div className="guide-title">
-              <Target size={19} />
-              <h2>Simple à apprendre. Subtil à maîtriser.</h2>
-            </div>
-            <div className="steps">
-              <article>
-                <span className="step-num">01</span>
-                <div>
-                  <h3>Pose ton point</h3>
-                  <p>Une intersection libre, un point. Chacun son tour.</p>
+                <div className="steps">
+                  <article>
+                    <span className="step-num">01</span>
+                    <div>
+                      <h3>Pose ton point</h3>
+                      <p>Une intersection libre, un point. Chacun son tour.</p>
+                    </div>
+                  </article>
+                  <article>
+                    <span className="step-num">02</span>
+                    <div>
+                      <h3>Ferme la boucle</h3>
+                      <p>Entoure les points adverses, même en diagonale.</p>
+                    </div>
+                  </article>
+                  <article>
+                    <span className="step-num">03</span>
+                    <div>
+                      <h3>Prends l’avantage</h3>
+                      <p>Un point capturé = un point. Le meilleur score gagne.</p>
+                    </div>
+                  </article>
                 </div>
-              </article>
-              <article>
-                <span className="step-num">02</span>
-                <div>
-                  <h3>Ferme la boucle</h3>
-                  <p>Entoure les points adverses, même en diagonale.</p>
-                </div>
-              </article>
-              <article>
-                <span className="step-num">03</span>
-                <div>
-                  <h3>Prends l’avantage</h3>
-                  <p>Un point capturé = un point. Le meilleur score gagne.</p>
-                </div>
-              </article>
-            </div>
-          </section>
-          <footer>
-            <span>Kropki · Un point. Tout change.</span>
-            <span>Mode local · Ordinateur ou deux joueurs</span>
-          </footer>
+              </section>
+              <footer>
+                <span>Kropki · Un point. Tout change.</span>
+                <span>Mode local · Ordinateur ou deux joueurs</span>
+              </footer>
+            </>
+          )}
         </main>
       </div>
       <dialog ref={dialog} onCancel={() => setModal(null)}>
@@ -753,7 +789,17 @@ export default function GamePage() {
                 </li>
                 <li>
                   <strong>Le score décide.</strong> Un point adverse capturé = un point. La partie
-                  se termine quand le plateau est plein ou en cliquant sur « Terminer ».
+                  se termine quand le plateau est plein ou dès que le compte à rebours commun
+                  atteint zéro : le meilleur score gagne. À égalité, match nul. Abandonner donne la
+                  victoire à l’adversaire, quel que soit le score.
+                </li>
+                <li>
+                  <strong>Une limite pour toute la partie.</strong> 3, 5, 7, 10 ou 30 minutes au
+                  total, pour les deux joueurs réunis. Le compte à rebours démarre au premier pion légalement placé
+                  de la partie et continue quel que soit le joueur au trait, y compris pendant la
+                  réflexion de l’ordinateur. La relecture et le tutoriel mettent cette partie locale
+                  en pause. Les fenêtres de règles et de confirmation ne mettent pas en pause.
+                  Annuler un coup ne rembourse pas de temps.
                 </li>
               </ol>
               <p className="rules-source">
@@ -766,6 +812,10 @@ export default function GamePage() {
                   Référence des règles <ArrowUpRight size={12} />
                 </a>
               </p>
+              <button className="tutorial-entry rules-tutorial" onClick={launchTutorial}>
+                <GraduationCap size={17} /> Apprendre avec le tutoriel interactif{" "}
+                <ArrowRight size={15} />
+              </button>
               <button className="primary-button" onClick={() => setModal(null)}>
                 C’est parti <ArrowRight size={17} />
               </button>
@@ -835,6 +885,26 @@ export default function GamePage() {
               {game.moves.length > 0 && (
                 <p className="reset-note">La partie en cours sera remplacée.</p>
               )}
+              <label className="field-label" htmlFor="cadence">
+                Durée totale de la partie
+              </label>
+              <div className="select-wrap">
+                <select
+                  id="cadence"
+                  value={cadence}
+                  onChange={(e) => setCadence(Number(e.target.value))}
+                >
+                  {CADENCES.map((minutes) => (
+                    <option key={minutes} value={minutes}>
+                      {minutes} minute{minutes > 1 ? "s" : ""}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={16} />
+              </div>
+              <p className="reset-note">
+                À zéro, le score décide. Un abandon donne la victoire à l’adversaire.
+              </p>
               <button className="primary-button" onClick={start}>
                 Commencer la partie <ArrowRight size={17} />
               </button>
@@ -843,11 +913,30 @@ export default function GamePage() {
             <>
               <span className="tiny-label">LE DERNIER MOT</span>
               <h2>
-                Fin du <em>duel ?</em>
+                Abandonner <em>le duel ?</em>
               </h2>
               <p className="end-copy">
-                La partie sera arrêtée et le gagnant désigné selon les points capturés.
+                L’adversaire gagne immédiatement, même si le joueur qui abandonne mène au score.
+                L’horloge continue pendant cette confirmation.
               </p>
+              {mode === "local" && (
+                <>
+                  <label className="field-label" htmlFor="resigning">
+                    Qui abandonne ?
+                  </label>
+                  <div className="select-wrap">
+                    <select
+                      id="resigning"
+                      value={resigning}
+                      onChange={(e) => setResigning(Number(e.target.value) as 1 | 2)}
+                    >
+                      <option value={1}>Les bleus</option>
+                      <option value={2}>Les rouges</option>
+                    </select>
+                    <ChevronDown size={16} />
+                  </div>
+                </>
+              )}
               <div className="final-score">
                 <span style={{ color: colors[1] }}>{score[1]}</span>
                 <span>—</span>
@@ -856,11 +945,11 @@ export default function GamePage() {
               <button
                 className="primary-button"
                 onClick={() => {
-                  setGame({ ...game, ended: true });
+                  setMatch((current) => resignMatch(current, resigning, Date.now()));
                   setModal(null);
                 }}
               >
-                Terminer la partie <Flag size={16} />
+                Confirmer l’abandon <Flag size={16} />
               </button>
               <button className="dialog-back" onClick={() => setModal(null)}>
                 Continuer à jouer

@@ -1,4 +1,7 @@
 import {} from "drizzle-orm/sqlite-core";
+export * from "./auth-schema";
+export * from "./online-schema";
+export * from "./ranked-schema";
 
 /**
  * Define your database schema here, then apply it with `bun run db:push`
