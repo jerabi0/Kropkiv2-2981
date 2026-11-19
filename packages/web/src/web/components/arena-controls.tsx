@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Sparkles, Volume2, VolumeX } from "lucide-react";
-import { ELEMENTS, SEALS, useArenaSettings } from "../lib/arena-settings";
+import { ELEMENTS, SEALS, TERRAINS, useArenaSettings } from "../lib/arena-settings";
 import { unlockArenaAudio } from "../lib/arena-audio";
 import { ArenaAvatar } from "./arena-avatar";
 export function ArenaControls() {
@@ -35,7 +35,7 @@ export function ArenaControls() {
       <summary>
         <Sparkles size={17} /> Habillage de l’arène{" "}
         <span>
-          {ELEMENTS[s.element]} · {SEALS[s.seal]}
+          {TERRAINS[s.terrain]} · {ELEMENTS[s.element]} · {SEALS[s.seal]}
         </span>
       </summary>
       <div className="arena-controls-body">
