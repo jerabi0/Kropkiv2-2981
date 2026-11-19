@@ -22,6 +22,7 @@ import {
   Swords,
   HardDrive,
   GraduationCap,
+  Trophy,
 } from "lucide-react";
 import { createGame, replay, legal, scores, computerMove } from "../lib/kropki";
 import {
@@ -469,6 +470,29 @@ export default function GamePage() {
                       {view.moves.length} {view.moves.length > 1 ? "coups joués" : "coup joué"}
                     </span>
                   </div>
+                  {game.ended && review === null && (
+                    <section
+                      className={"match-finale " + (winningPlayer === null ? "match-finale-draw" : winningPlayer === 1 ? "match-finale-win" : "match-finale-loss")}
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <span className="match-finale-icon"><Trophy size={25} /></span>
+                      <div className="match-finale-copy">
+                        <span className="match-finale-kicker">DUEL TERMINÉ</span>
+                        <h2>
+                          {winningPlayer === null
+                            ? "Égalité parfaite"
+                            : mode === "computer"
+                              ? match.result?.winner === 1 ? "Victoire !" : "Défaite"
+                              : match.result?.winner === 1 ? "Les bleus l’emportent" : "Les rouges l’emportent"}
+                        </h2>
+                        <p>{resultText}{winner}</p>
+                      </div>
+                      <div className="match-finale-score" aria-label={`Score final : ${score[1]} à ${score[2]}`}>
+                        <strong>{score[1]}</strong><span>—</span><strong>{score[2]}</strong>
+                      </div>
+                    </section>
+                  )}
                   <div
                     className={"message " + (view.ended ? "finished-message" : "")}
                     aria-live="polite"

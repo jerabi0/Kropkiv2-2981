@@ -4791,3 +4791,90 @@ dialog::backdrop {
 @media (prefers-reduced-motion: reduce) {
   .arena-stage::after { animation: none !important; }
 }
+
+
+/* Écran de résultat compact : victoire, défaite, égalité ou duel annulé. */
+.match-finale {
+  --final-accent: #8ba9ff;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 17px 19px;
+  border: 1px solid color-mix(in srgb, var(--final-accent) 45%, #293852);
+  border-radius: 13px;
+  color: #f8faff;
+  background:
+    radial-gradient(ellipse at 0% 50%, color-mix(in srgb, var(--final-accent) 18%, transparent), transparent 62%),
+    linear-gradient(115deg, #111d37, #0b1222);
+  box-shadow: 0 12px 30px #07102026, inset 0 0 24px color-mix(in srgb, var(--final-accent) 7%, transparent);
+  animation: match-finale-enter 720ms cubic-bezier(.16,.78,.25,1) both;
+}
+.match-finale-win { --final-accent: #75e0b0; }
+.match-finale-loss { --final-accent: #ff8991; }
+.match-finale-draw { --final-accent: #d5c28c; }
+.match-finale-cancelled { --final-accent: #aab6ca; }
+.match-finale-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid color-mix(in srgb, var(--final-accent) 55%, transparent);
+  border-radius: 50%;
+  color: var(--final-accent);
+  background: color-mix(in srgb, var(--final-accent) 12%, transparent);
+  animation: match-finale-emblem 900ms cubic-bezier(.16,.78,.25,1) both;
+}
+.match-finale-copy { min-width: 0; }
+.match-finale-kicker {
+  display: block;
+  color: var(--final-accent);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+}
+.match-finale-copy h2 {
+  margin: 3px 0 2px;
+  color: #fff;
+  font-size: clamp(17px, 2.4vw, 23px);
+  line-height: 1.25;
+}
+.match-finale-copy p {
+  color: #c4cee1;
+  font-size: 10px;
+  line-height: 1.55;
+}
+.match-finale-score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-left: 13px;
+  border-left: 1px solid #ffffff24;
+  font-variant-numeric: tabular-nums;
+}
+.match-finale-score strong {
+  color: var(--final-accent);
+  font-size: 25px;
+  line-height: 1;
+}
+.match-finale-score span { color: #9baac4; }
+@keyframes match-finale-enter {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  65% { opacity: 1; transform: translateY(-2px) scale(1.005); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes match-finale-emblem {
+  0% { opacity: 0; transform: rotate(-24deg) scale(.45); }
+  65% { opacity: 1; transform: rotate(7deg) scale(1.12); }
+  100% { opacity: 1; transform: rotate(0) scale(1); }
+}
+@media (max-width: 520px) {
+  .match-finale { grid-template-columns: auto minmax(0, 1fr); gap: 10px; padding: 13px; }
+  .match-finale-icon { width: 40px; height: 40px; }
+  .match-finale-score { grid-column: 2; border-left: 0; padding: 4px 0 0; }
+  .match-finale-score strong { font-size: 21px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .match-finale, .match-finale-icon { animation: none !important; }
+}
