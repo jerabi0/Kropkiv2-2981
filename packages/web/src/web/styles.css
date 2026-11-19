@@ -4925,3 +4925,54 @@ dialog::backdrop {
     transition: none !important;
   }
 }
+
+
+/* Réactions de tour et avantage au score : feedback purement visuel. */
+.tactical-board .turn-banner {
+  transition: border-color 260ms ease, background 260ms ease, box-shadow 260ms ease;
+}
+.tactical-board.turn-1 .turn-banner {
+  animation: turn-banner-blue 420ms ease-out both;
+}
+.tactical-board.turn-2 .turn-banner {
+  animation: turn-banner-red 420ms ease-out both;
+}
+.tactical-board.turn-1 .turn-banner svg { filter: drop-shadow(0 0 5px #255bfa55); }
+.tactical-board.turn-2 .turn-banner svg { filter: drop-shadow(0 0 5px #f2636755); }
+@keyframes turn-banner-blue {
+  0% { box-shadow: inset 0 0 0 0 #255bfa00; }
+  45% { box-shadow: inset 0 0 0 1px #255bfa55, 0 0 18px #255bfa22; }
+  100% { box-shadow: inset 0 0 0 0 #255bfa00; }
+}
+@keyframes turn-banner-red {
+  0% { box-shadow: inset 0 0 0 0 #f2636700; }
+  45% { box-shadow: inset 0 0 0 1px #f2636755, 0 0 18px #f2636722; }
+  100% { box-shadow: inset 0 0 0 0 #f2636700; }
+}
+.game-area[data-score-lead="blue"] .online-players > div:first-child,
+.game-area[data-score-lead="red"] .online-players > div:last-child {
+  border-color: #75cfa5;
+  box-shadow: 0 0 0 1px #75cfa533, 0 0 18px #75cfa51c;
+  animation: score-lead-pulse 650ms ease-out both;
+}
+.game-area[data-score-lead="blue"] .player-score:first-child,
+.game-area[data-score-lead="red"] .player-score:last-child {
+  border-color: #75cfa5;
+  box-shadow: 0 0 0 1px #75cfa533, 0 0 16px #75cfa51c;
+}
+.game-area[data-score-lead="tie"] .player-score,
+.game-area[data-score-lead="tie"] .online-players > div {
+  border-color: #dce4f1;
+}
+@keyframes score-lead-pulse {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.018); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tactical-board.turn-1 .turn-banner,
+  .tactical-board.turn-2 .turn-banner,
+  .game-area[data-score-lead] .online-players > div {
+    animation: none !important;
+  }
+}
