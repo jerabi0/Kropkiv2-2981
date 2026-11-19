@@ -1,6 +1,6 @@
 // Synthesized arena cues and optional ambient beds; no external audio files or autoplay.
 let context: AudioContext | null = null;
-let ambience: { nodes: OscillatorNode[]; gain: GainNode } | null = null;
+let ambience: { nodes: OscillatorNode[]; gain: GainNode; filter: BiquadFilterNode; key: string } | null = null;
 
 const TERRAIN_ROOTS = [523, 110, 740, 196, 146, 330, 392, 220, 587, 262, 440, 82];
 const SEAL_INTERVALS = [
@@ -31,10 +31,16 @@ export function stopArenaAmbience() {
   const now = context.currentTime;
   current.gain.gain.cancelScheduledValues(now);
   current.gain.gain.setTargetAtTime(0.0001, now, 0.16);
-  current.nodes.forEach((node) => {
+  current.nodes.forEach((node, index) => {
     try {
+      node.onended = () => {
+        node.disconnect();
+        if (index === current.nodes.length - 1) {
+          current.gain.disconnect();
+          current.filter.disconnect();
+        }
+      };
       node.stop(now + 0.65);
-      node.onended = () => node.disconnect();
     } catch {
       node.disconnect();
     }
@@ -50,6 +56,8 @@ export function startArenaAmbience(terrain: number, element: number, sealStyle: 
   const interval = SEAL_INTERVALS[sealStyle] ?? SEAL_INTERVALS[0];
   const base = Math.max(55, (root / 3) * (1 + element * 0.018));
   const wave = terrain === 1 || terrain === 11 ? "triangle" : terrain === 3 ? "sawtooth" : "sine";
+  const key = `${terrain}:${element}:${sealStyle}`;
+  if (ambience?.key === key) return;
   const master = audio.createGain();
   master.gain.setValueAtTime(0.0001, audio.currentTime);
   master.gain.setTargetAtTime(0.0045, audio.currentTime, 0.8);
@@ -73,7 +81,7 @@ export function startArenaAmbience(terrain: number, element: number, sealStyle: 
     layer.connect(master);
     node.start();
   });
-  ambience = { nodes, gain: master };
+  ambience = { nodes, gain: master, filter, key };
 }
 
 export function arenaSound(capture: boolean, element: number, liberated: boolean, terrain = 0, sealStyle = 0) {
