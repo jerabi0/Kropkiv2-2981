@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Copy, Check, Flag, History, RefreshCw } from "lucide-react";
+import { Copy, Check, Flag, History, RefreshCw, Trophy } from "lucide-react";
 import { OnlineShell, RequireAccount } from "../components/online-shell";
 import { LocalArenaAvatar } from "../components/arena-avatar";
 import { TacticalBoard } from "../components/tactical-board";
@@ -231,6 +231,31 @@ function Room({ id }: { id: string }) {
             onMove={(x, y) => send({ type: "move", x, y })}
             feedback={review === null ? feedback : null}
           />
+          {ended && review === null && (
+            <section
+              className={"match-finale " + (data.cancelled ? "match-finale-cancelled" : data.result?.winner === null ? "match-finale-draw" : data.result?.winner === data.player ? "match-finale-win" : "match-finale-loss")}
+              role="status"
+              aria-live="polite"
+            >
+              <span className="match-finale-icon"><Trophy size={25} /></span>
+              <div className="match-finale-copy">
+                <span className="match-finale-kicker">RÉSULTAT DU DUEL</span>
+                <h2>
+                  {data.cancelled
+                    ? "Duel annulé"
+                    : data.result?.winner === null
+                      ? "Égalité parfaite"
+                      : data.result?.winner === data.player ? "Victoire !" : "Défaite"}
+                </h2>
+                <p>{result}</p>
+              </div>
+              {!data.cancelled && (
+                <div className="match-finale-score" aria-label={`Score final : ${score[1]} à ${score[2]}`}>
+                  <strong>{score[1]}</strong><span>—</span><strong>{score[2]}</strong>
+                </div>
+              )}
+            </section>
+          )}
           <div className="message" aria-live="polite">
             {ended
               ? result
