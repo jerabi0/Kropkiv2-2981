@@ -23,13 +23,15 @@ export function GameBoard({
   ariaLabel?: string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const impactCount = (feedback?.captured.length ?? 0) + (feedback?.liberated.length ?? 0);
+  const majorCapture = impactCount >= 5;
   const spacing = 32,
     pad = 26,
     vw = (game.w - 1) * spacing + pad * 2,
     vh = (game.h - 1) * spacing + pad * 2,
     last = game.moves.at(-1);
   return (
-    <div className={"board-paper " + (locked ? "board-locked" : "")}>
+    <div className={"board-paper " + (locked ? "board-locked" : "") + (majorCapture ? " capture-impact-board" : "")}>
       <svg
         className="game-board"
         viewBox={`0 0 ${vw} ${vh}`}
@@ -239,6 +241,9 @@ export function GameBoard({
           );
         })}
       </svg>
+      {majorCapture && feedback && (
+        <span key={feedback.id} className="capture-impact-flash" aria-hidden="true" />
+      )}
       {feedback && (
         <output className={`capture-toast ${feedback.liberated.length ? "capture-toast-reconquest" : "capture-toast-capture"}`} key={feedback.id} aria-live="polite">
           <span className="capture-toast-title">
