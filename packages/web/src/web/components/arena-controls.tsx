@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { Sparkles, Volume2, VolumeX } from "lucide-react";
-import { ELEMENTS, SEALS, TERRAINS, useArenaSettings } from "../lib/arena-settings";
+import { ELEMENTS, SEALS, SEAL_STYLES, TERRAINS, useArenaSettings } from "../lib/arena-settings";
 import { unlockArenaAudio } from "../lib/arena-audio";
 import { ArenaAvatar } from "./arena-avatar";
 export function ArenaControls() {
@@ -35,7 +35,7 @@ export function ArenaControls() {
       <summary>
         <Sparkles size={17} /> Habillage de l’arène{" "}
         <span>
-          {TERRAINS[s.terrain]} · {ELEMENTS[s.element]} · {SEALS[s.seal]}
+          {TERRAINS[s.terrain]} · {SEAL_STYLES[s.sealStyle]}
         </span>
       </summary>
       <div className="arena-controls-body">
@@ -68,17 +68,17 @@ export function ArenaControls() {
             </select>
           </label>
           <label>
-            Scellement de la zone
-            <select
-              aria-label="Scellement de la zone"
-              value={s.seal}
-              onChange={(e) => update({ seal: Number(e.target.value) })}
-            >
-              {SEALS.map((n, i) => (
-                <option key={n} value={i}>
-                  {n}
-                </option>
-              ))}
+            Style de scellement
+            <select aria-label="Style de scellement" value={s.sealStyle}
+              onChange={(e) => update({ sealStyle: Number(e.target.value) })}>
+              {SEAL_STYLES.map((n, i) => <option key={n} value={i}>{n}</option>)}
+            </select>
+          </label>
+          <label>
+            Sceau central
+            <select aria-label="Sceau central" value={s.seal}
+              onChange={(e) => update({ seal: Number(e.target.value) })}>
+              {SEALS.map((n, i) => <option key={n} value={i}>{n}</option>)}
             </select>
           </label>
         </div>
