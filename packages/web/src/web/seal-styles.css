@@ -151,3 +151,99 @@
     transform: none;
   }
 }
+
+
+/* 6. Éclair : décharges qui claquent le long des frontières. */
+.seal-style-5 .seal-lightning {
+  fill: none;
+  stroke: #fff7a8;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: bevel;
+  filter: drop-shadow(0 0 5px #ffe14a);
+  stroke-dasharray: 32;
+  stroke-dashoffset: 32;
+  animation: seal-cube-close .32s ease-out both;
+}
+/* 7. Sakura : pétales qui s'ouvrent sur les points de frontière. */
+.seal-style-6 .seal-sakura {
+  fill: #ffb7d5;
+  stroke: #fff0f7;
+  stroke-width: .8;
+  filter: drop-shadow(0 0 4px #ff8fbf);
+  animation: seal-rune-ignite .6s ease-out both;
+}
+.seal-style-6 .seal-sakura:nth-child(3n) { animation-delay: .15s; }
+/* 8. Toile : réseau de fils qui converge vers le centre de la zone. */
+.seal-style-7 .seal-web {
+  fill: none;
+  stroke: #e8f6ff;
+  stroke-width: 1.35;
+  stroke-dasharray: 5 3;
+  filter: drop-shadow(0 0 3px #9fe8ff);
+  animation: seal-details-arrive .5s ease-out both;
+}
+/* 9. Enfer : flammes qui montent depuis les angles. */
+.seal-style-8 .seal-hell-flame {
+  fill: #ff6a1f;
+  stroke: #ffe14a;
+  stroke-width: 1;
+  filter: drop-shadow(0 0 5px #ff3a2a);
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: seal-pillar-rise .48s ease-out both;
+}
+.seal-style-8 .seal-hell-flame:nth-child(2n) { animation-delay: .12s; }
+/* 10. Vague : lignes fluides qui parcourent le contour. */
+.seal-style-9 .seal-wave {
+  fill: none;
+  stroke: #9fe8ff;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px #3fa9ff);
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: seal-cube-close .7s ease-out both;
+}
+/* 11. Crâne : petits marqueurs macabres aux sommets. */
+.seal-style-10 .seal-skull circle:first-child {
+  fill: #eef0f6;
+  stroke: #c79bff;
+  stroke-width: 1;
+  filter: drop-shadow(0 0 4px #9a8cff);
+}
+.seal-style-10 .seal-skull circle:not(:first-child),
+.seal-style-10 .seal-skull path {
+  fill: none;
+  stroke: #171021;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+}
+/* 12. Constellation : étoiles reliées par des traits lumineux. */
+.seal-style-11 .seal-constellation {
+  fill: #fff6c8;
+  stroke: #fff6c8;
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 5px #ffe9a0);
+}
+.seal-style-11 .seal-constellation line {
+  stroke: #9a8cff;
+  stroke-dasharray: 3 4;
+  opacity: .85;
+}
+.seal-style-11 .seal-constellation circle {
+  fill: #fff;
+  stroke: #9a8cff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seal-style-5 .seal-lightning,
+  .seal-style-6 .seal-sakura,
+  .seal-style-7 .seal-web,
+  .seal-style-8 .seal-hell-flame,
+  .seal-style-9 .seal-wave {
+    animation: none !important;
+    stroke-dashoffset: 0;
+    opacity: .95;
+  }
+}
