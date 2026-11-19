@@ -1,7 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import { restoreArena, defaults, ELEMENTS, SEALS, TERRAINS } from "./arena-settings";
 describe("Habillage sans données de jeu", () => {
-  test("douze terrains, cinq styles de coup et douze scellements", () => {\n    expect(TERRAINS.length).toBe(12);\n    expect(new Set(TERRAINS).size).toBe(12);
+  test("douze terrains, cinq styles de coup et douze scellements", () => {
+    expect(TERRAINS.length).toBe(12);\n    expect(new Set(TERRAINS).size).toBe(12);
     expect(ELEMENTS.length).toBe(5);
     expect(SEALS.length).toBe(12);
     expect(new Set(SEALS).size).toBe(12);
@@ -33,6 +34,7 @@ describe("Habillage sans données de jeu", () => {
             version: 1,
             seal,
             element,
+            terrain: 11,
             sound: true,
             effects: false,
             avatar: "mage",
@@ -40,7 +42,8 @@ describe("Habillage sans données de jeu", () => {
           }),
         );
         expect(s.seal).toBe(seal);
-        expect(s.element).toBe(element);\n        expect(s.terrain).toBe(11);
+        expect(s.element).toBe(element);
+        expect(s.terrain).toBe(11);
         expect(s.sound).toBe(true);
         expect(s.effects).toBe(false);
         expect(s.avatar).toBe("mage");
