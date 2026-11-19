@@ -4,7 +4,7 @@ import { GameBoard } from "./game-board";
 import { ArenaControls } from "./arena-controls";
 import { ArenaAvatar } from "./arena-avatar";
 import { EFFECT_COLORS, SEAL_STYLES, TERRAINS, TERRAIN_COLORS, useArenaSettings } from "../lib/arena-settings";
-import { arenaSound, unlockArenaAudio } from "../lib/arena-audio";
+import { arenaSound, startArenaAmbience, stopArenaAmbience, unlockArenaAudio } from "../lib/arena-audio";
 import type { Feedback } from "../lib/game-feedback";
 type Event = { id: string; x: number; y: number; player: number; feedback: Feedback | null };
 function Seal({ style }: { style: number }) {
@@ -255,17 +255,33 @@ export function ArenaBoard({
     ),
   );
   useEffect(() => {
-    if (!s.sound || !active) return;
-    const unlock = () => {
-      void unlockArenaAudio();
+    if (!s.sound || !active) {
+      stopArenaAmbience();
+      return;
+    }
+    let disposed = false;
+    const syncAmbience = async () => {
+      const unlocked = await unlockArenaAudio();
+      // Ignore a late unlock if the user disabled sound or left the arena meanwhile.
+      if (unlocked && !disposed) startArenaAmbience(s.terrain, s.element, s.sealStyle);
     };
-    document.addEventListener("pointerdown", unlock);
-    document.addEventListener("keydown", unlock);
+    const onVisibility = () => {
+      if (document.hidden) stopArenaAmbience();
+      else if (!disposed) startArenaAmbience(s.terrain, s.element, s.sealStyle);
+    };
+    // The sound toggle is opt-in; browsers only unlock audio after a user gesture.
+    if (!document.hidden) startArenaAmbience(s.terrain, s.element, s.sealStyle);
+    document.addEventListener("pointerdown", syncAmbience);
+    document.addEventListener("keydown", syncAmbience);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      document.removeEventListener("pointerdown", unlock);
-      document.removeEventListener("keydown", unlock);
+      disposed = true;
+      document.removeEventListener("pointerdown", syncAmbience);
+      document.removeEventListener("keydown", syncAmbience);
+      document.removeEventListener("visibilitychange", onVisibility);
+      stopArenaAmbience();
     };
-  }, [s.sound, active]);
+  }, [s.sound, active, s.terrain, s.element, s.sealStyle]);
   const color = EFFECT_COLORS[s.element];
   const terrainColor = TERRAIN_COLORS[s.terrain];
   return (
