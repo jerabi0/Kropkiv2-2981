@@ -361,7 +361,7 @@ export default function GamePage() {
           ) : (
             <>
               {storageWarning && <output className="message">{storageWarning}</output>}
-              <section id="plateau" className="game-area">
+              <section id="plateau" className="game-area" data-match-phase={game.ended ? "finished" : match.clock.started ? "active" : "waiting"}>
                 <div className="board-column">
                   <MatchClock
                     remaining={match.clock.remaining}

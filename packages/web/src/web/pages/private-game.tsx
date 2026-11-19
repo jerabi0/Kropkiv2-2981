@@ -161,7 +161,7 @@ function Room({ id }: { id: string }) {
         </div>
         <Link href="/en-ligne">Mes parties</Link>
       </div>
-      <div className="game-area">
+      <div className="game-area" data-match-phase={ended ? "finished" : data.startedAt === null ? (data.ready.every(Boolean) ? "ready" : "waiting") : "active"}>
         <div className="board-column">
           <MatchClock
             minutes={data.minutes}
