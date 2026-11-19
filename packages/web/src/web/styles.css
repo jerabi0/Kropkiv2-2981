@@ -5002,3 +5002,44 @@ dialog::backdrop {
     transform: none;
   }
 }
+
+
+/* Pose plus lisible : le pion arrive avec un léger mouvement vertical et une onde dédiée. */
+.arena-stage .last-move-point {
+  animation: arena-point-drop 520ms cubic-bezier(.16,.9,.25,1.25) both;
+}
+.arena-stage .move-placement-ripple {
+  fill: none;
+  stroke-width: 2.4;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: arena-point-wave 680ms cubic-bezier(.16,.78,.25,1) both;
+}
+.arena-stage .arena-strike {
+  animation-duration: 780ms;
+}
+.arena-stage .arena-impact-ring {
+  animation-duration: 720ms;
+}
+@keyframes arena-point-drop {
+  0% { opacity: .2; transform: translateY(-8px) scale(.3); }
+  58% { opacity: 1; transform: translateY(1px) scale(1.22); }
+  78% { transform: translateY(-1px) scale(.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes arena-point-wave {
+  0% { opacity: .9; transform: scale(.28); stroke-width: 3; }
+  60% { opacity: .48; transform: scale(1.45); stroke-width: 1.8; }
+  100% { opacity: 0; transform: scale(2.05); stroke-width: .7; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-stage .last-move-point,
+  .arena-stage .move-placement-ripple,
+  .arena-stage .arena-strike,
+  .arena-stage .arena-impact-ring {
+    animation: none !important;
+  }
+  .arena-stage .last-move-point { opacity: 1; transform: none; }
+  .arena-stage .move-placement-ripple { opacity: .18; transform: none; }
+}
