@@ -1,0 +1,96 @@
+/* Cinq traitements visuels de scellement. Purement cosmétiques : aucune règle de capture n'est modifiée. */
+.arena-seal-details {
+  pointer-events: none;
+  opacity: 0;
+  animation: seal-details-arrive .45s ease-out .12s forwards;
+}
+.arena-seal-details circle,
+.arena-seal-details path,
+.arena-seal-details rect,
+.arena-seal-details ellipse,
+.arena-seal-details line {
+  vector-effect: non-scaling-stroke;
+}
+
+/* 1. Cercle magique : petites runes qui s'allument le long du périmètre. */
+.seal-style-0 .seal-rune-ring {
+  fill: #100d2b;
+  stroke: #e3c5ff;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 4px #bd83ff);
+}
+.seal-style-0 .seal-rune-mark {
+  stroke: #fff1b8;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px #c99aff);
+}
+
+/* 2. Chaînes : maillons métalliques entrelacés. */
+.seal-style-1 .seal-chain-link {
+  fill: #1b2338;
+  stroke: #d8e3ff;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 3px #91a8d8);
+}
+.seal-style-1 .arena-seal-edge {
+  stroke: #aebbd8;
+  stroke-dasharray: 7 3;
+}
+
+/* 3. Barrière : piliers d'énergie aux angles de la frontière. */
+.seal-style-2 .seal-barrier-pillar {
+  fill: #b9f7ff;
+  stroke: #fff;
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 5px #54dfff);
+}
+.seal-style-2 .arena-seal-edge {
+  stroke: #75eaff;
+  stroke-width: 5;
+  stroke-dasharray: 2 5;
+}
+
+/* 4. Talismans : papiers scellés qui se fixent au contour. */
+.seal-style-3 .seal-talisman rect {
+  fill: #fff0bd;
+  stroke: #d84e48;
+  stroke-width: 1.3;
+  filter: drop-shadow(0 0 4px #ffb45e);
+}
+.seal-style-3 .seal-talisman path {
+  fill: none;
+  stroke: #b72f42;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.seal-style-3 .arena-seal-edge {
+  stroke: #ffc77d;
+  stroke-dasharray: 3 6;
+}
+
+/* 5. Cube : seconde arête décalée pour donner une profondeur géométrique. */
+.seal-style-4 .seal-cube-depth {
+  stroke: #d8c5ff;
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+  opacity: .9;
+  filter: drop-shadow(0 0 4px #a783ff);
+}
+.seal-style-4 .arena-seal-edge {
+  stroke: #a98bff;
+  stroke-width: 3.5;
+  stroke-dasharray: 8 3;
+}
+
+@keyframes seal-details-arrive {
+  0% { opacity: 0; }
+  35% { opacity: 1; }
+  100% { opacity: .95; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-seal-details {
+    animation: none;
+    opacity: .95;
+  }
+}
