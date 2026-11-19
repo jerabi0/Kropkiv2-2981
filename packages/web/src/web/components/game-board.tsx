@@ -165,6 +165,13 @@ export function GameBoard({
                         opacity=".55"
                       />
                       <circle
+                        className="move-placement-ripple"
+                        cx={cx}
+                        cy={cy}
+                        r="8"
+                        stroke={playerColors[p]}
+                      />
+                      <circle
                         className="last-move-point"
                         cx={cx}
                         cy={cy}
