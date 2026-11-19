@@ -257,10 +257,15 @@ export function ArenaBoard({
                       {z.edges.map(([x, y, nx, ny], j) => (
                         <line
                           key={j}
+                          className="arena-seal-edge"
+                          pathLength="1"
                           x1={26 + x * 32}
                           y1={26 + y * 32}
                           x2={26 + nx * 32}
                           y2={26 + ny * 32}
+                          style={{
+                            animationDelay: `${(j / Math.max(1, z.edges.length)) * 1.15}s`,
+                          }}
                         />
                       ))}
                     </g>
@@ -269,6 +274,7 @@ export function ArenaBoard({
                   transform={`translate(${center[0]} ${center[1]}) scale(${Math.min(radius, Math.min(w, h) * 0.3) / 60})`}
                 >
                   <g className="arena-seal">
+                    <circle className="arena-seal-pulse" r="62" />
                     <Seal style={s.seal} />
                   </g>
                 </g>
