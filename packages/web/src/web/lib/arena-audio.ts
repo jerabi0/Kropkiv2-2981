@@ -16,11 +16,9 @@ export function arenaSound(capture: boolean, element: number, liberated: boolean
   const terrainRoots = [523, 110, 740, 196, 146, 330, 392, 220, 587, 262, 440, 82];
   const root = terrainRoots[terrain] ?? 440;
   const sealIntervals = [
-    [0.5, 1, 2],
-    [0.42, 0.7, 1.4],
-    [0.6, 0.9, 1.8],
-    [1, 1.33, 1.8],
-    [0.35, 0.5, 1.5],
+    [0.5, 1, 2], [0.42, 0.7, 1.4], [0.6, 0.9, 1.8], [1, 1.33, 1.8],
+    [0.35, 0.5, 1.5], [1.5, 2, 2.5], [0.75, 1.25, 1.75], [0.5, 1.5, 2.5],
+    [0.4, 0.8, 1.2], [0.66, 1, 1.5], [0.3, 0.6, 1.2], [1, 1.5, 2],
   ][sealStyle] ?? [0.5, 1, 2];
   const notes = capture
     ? liberated ? [root, root * 1.25, root * 1.5] : sealIntervals.map((n) => root * n)
