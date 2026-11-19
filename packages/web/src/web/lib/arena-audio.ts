@@ -84,12 +84,14 @@ export function startArenaAmbience(terrain: number, element: number, sealStyle: 
   ambience = { nodes, gain: master, filter, key };
 }
 
-export function arenaSound(capture: boolean, element: number, liberated: boolean, terrain = 0, sealStyle = 0) {
+export function arenaSound(capture: boolean, element: number, liberated: boolean, terrain = 0, sealStyle = 0, impactCount = 0) {
   if (!context || context.state !== "running" || document.hidden) return;
   const audio = context;
   const now = audio.currentTime;
   const root = TERRAIN_ROOTS[terrain] ?? 440;
   const intervals = SEAL_INTERVALS[sealStyle] ?? SEAL_INTERVALS[0];
+  const impact = Math.max(0, Math.min(impactCount, 12));
+  const major = capture && impact >= 5;
   const notes = capture
     ? liberated
       ? [root * 1.5, root * 1.25, root]
@@ -103,15 +105,30 @@ export function arenaSound(capture: boolean, element: number, liberated: boolean
     oscillator.type = terrain === 1 || terrain === 11 ? "triangle" : terrain === 3 ? "sawtooth" : "sine";
     oscillator.frequency.setValueAtTime(frequency, time);
     oscillator.frequency.exponentialRampToValueAtTime(
-      capture ? frequency * (liberated ? 0.72 : 1.5) : frequency * 0.6,
+      capture ? frequency * (liberated ? 0.72 : major ? 1.8 : 1.5) : frequency * 0.6,
       time + 0.12,
     );
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(capture ? (liberated ? 0.04 : 0.05) : 0.018, time + 0.01);
+    gain.gain.exponentialRampToValueAtTime(capture ? (major ? 0.062 : liberated ? 0.04 : 0.05) : 0.018, time + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.22);
     oscillator.connect(gain);
     gain.connect(audio.destination);
     oscillator.start(time);
     oscillator.stop(time + 0.24);
   });
+
+  if (major) {
+    const impactTone = audio.createOscillator();
+    const impactGain = audio.createGain();
+    impactTone.type = "sine";
+    impactTone.frequency.setValueAtTime(Math.max(45, root * (liberated ? 0.22 : 0.28)), now);
+    impactTone.frequency.exponentialRampToValueAtTime(38, now + 0.32);
+    impactGain.gain.setValueAtTime(0.0001, now);
+    impactGain.gain.exponentialRampToValueAtTime(0.085, now + 0.018);
+    impactGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
+    impactTone.connect(impactGain);
+    impactGain.connect(audio.destination);
+    impactTone.start(now);
+    impactTone.stop(now + 0.38);
+  }
 }
