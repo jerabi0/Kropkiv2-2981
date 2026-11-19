@@ -152,6 +152,30 @@ function SealTreatment({ edges, style }: { edges: [number, number, number, numbe
         return <g key={i} className="seal-talisman" transform={`translate(${mx} ${my}) rotate(${angle})`}><rect x="-4" y="-7" width="8" height="14" rx="1" /><path d="M0-4v8m-2-2 2 2 2-2" /></g>;
       })}
       {style === 4 && edges.map(([x, y, nx, ny], i) => <line key={i} className="seal-cube-depth" x1={26 + x * 32 + 3} y1={26 + y * 32 - 3} x2={26 + nx * 32 + 3} y2={26 + ny * 32 - 3} />)}
+      {style === 5 && edges.map(([x, y, nx, ny], i) => {
+        const mx = (x + nx) * 16 + 26, my = (y + ny) * 16 + 26;
+        const dx = nx - x, dy = ny - y, len = Math.hypot(dx, dy) || 1;
+        const px = -dy / len * 5, py = dx / len * 5;
+        return <path key={i} className="seal-lightning" d={`M${mx - px * 2} ${my - py * 2}L${mx + px} ${my + py}L${mx - px} ${my + py * 2}L${mx + px * 2} ${my + py * 3}`} />;
+      })}
+      {style === 6 && edges.map(([x, y, nx, ny], i) => {
+        const mx = (x + nx) * 16 + 26, my = (y + ny) * 16 + 26;
+        const angle = Math.atan2(ny - y, nx - x) * 180 / Math.PI;
+        return <g key={i} className="seal-sakura" transform={`translate(${mx} ${my}) rotate(${angle})`}><ellipse cx="0" cy="-5" rx="3" ry="6" /><ellipse cx="0" cy="5" rx="3" ry="6" /><circle r="2" /></g>;
+      })}
+      {style === 7 && (() => {
+        const cx = vertices.reduce((sum, p) => sum + p[0], 0) / Math.max(1, vertices.length);
+        const cy = vertices.reduce((sum, p) => sum + p[1], 0) / Math.max(1, vertices.length);
+        return <g className="seal-web">{vertices.map(([x, y], i) => <path key={i} d={`M${26 + cx * 32} ${26 + cy * 32}L${26 + x * 32} ${26 + y * 32}`} />)}{[.33, .66].map((t) => <path key={t} d={vertices.map(([x, y], i) => `${i ? "L" : "M"}${26 + (cx + (x - cx) * t) * 32} ${26 + (cy + (y - cy) * t) * 32}`).join(" ") + "Z"} />)}</g>;
+      })()}
+      {style === 8 && vertices.map(([x, y], i) => <path key={i} className="seal-hell-flame" d={`M${26 + x * 32 - 5} ${26 + y * 32 + 5}Q${26 + x * 32 - 10} ${26 + y * 32 - 3} ${26 + x * 32} ${26 + y * 32 - 13}Q${26 + x * 32 + 10} ${26 + y * 32 - 3} ${26 + x * 32 + 5} ${26 + y * 32 + 5}Z`} />)}
+      {style === 9 && edges.map(([x, y, nx, ny], i) => {
+        const ax = 26 + x * 32, ay = 26 + y * 32, bx = 26 + nx * 32, by = 26 + ny * 32;
+        const mx = (ax + bx) / 2, my = (ay + by) / 2, dx = bx - ax, dy = by - ay;
+        return <path key={i} className="seal-wave" d={`M${ax} ${ay}Q${mx - dy * .16} ${my + dx * .16} ${mx} ${my}T${bx} ${by}`} />;
+      })}
+      {style === 10 && vertices.map(([x, y], i) => <g key={i} className="seal-skull" transform={`translate(${26 + x * 32} ${26 + y * 32})`}><circle r="5" /><circle cx="-2" cy="-1" r="1.4" /><circle cx="2" cy="-1" r="1.4" /><path d="M-2 3V5M0 3V5M2 3V5" /></g>)}
+      {style === 11 && <g className="seal-constellation">{vertices.map(([x, y], i) => <g key={i}><path d={`M${26 + x * 32 - 3} ${26 + y * 32}l3 -3 3 3-3 3Z`} /><circle cx={26 + x * 32} cy={26 + y * 32} r="2.2" /></g>)}{edges.filter((_, i) => i % 2 === 0).map(([x, y, nx, ny], i) => <line key={i} x1={26 + x * 32} y1={26 + y * 32} x2={26 + nx * 32} y2={26 + ny * 32} />)}</g>}
     </g>
   );
 }
