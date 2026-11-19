@@ -208,7 +208,7 @@ export function ArenaBoard({
         player: move.player,
         feedback: feedback ?? null,
       });
-      if (s.sound) arenaSound(!!feedback, s.element, !!feedback?.liberated.length, s.terrain, s.sealStyle);
+      if (s.sound) arenaSound(!!feedback, s.element, !!feedback?.liberated.length, s.terrain, s.sealStyle, feedback ? feedback.captured.length + feedback.liberated.length : 0);
     } else if (
       props.feedback &&
       props.feedback !== lastFeedback.current &&
@@ -224,7 +224,7 @@ export function ArenaBoard({
         player: move.player,
         feedback: props.feedback,
       });
-      if (s.sound) arenaSound(true, s.element, !!props.feedback.liberated.length, s.terrain, s.sealStyle);
+      if (s.sound) arenaSound(true, s.element, !!props.feedback.liberated.length, s.terrain, s.sealStyle, props.feedback.captured.length + props.feedback.liberated.length);
     }
   }, [props.game.moves, props.feedback, active, s.sound, s.element, s.terrain, s.sealStyle]);
   useEffect(() => {
