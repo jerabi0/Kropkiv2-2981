@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "../styles/capture-effects.css";
 import { captured, legal, type Game } from "../lib/kropki";
 import { zoneKey, type Feedback } from "../lib/game-feedback";
 export const playerColors = ["", "#255bfa", "#f26367"];
@@ -82,7 +83,7 @@ export function GameBoard({
             fresh = feedback?.zones.includes(key);
           return (
             <g key={key} pointerEvents="none" className={fresh ? "new-capture-zone" : ""}>
-              {z.cells.map((c) => {
+              {z.cells.map((c, cellIndex) => {
                 const rw = game.w * 2 + 3;
                 return (
                   <rect
@@ -93,7 +94,8 @@ export function GameBoard({
                     height={spacing / 2 + 0.1}
                     fill={playerColors[z.player]}
                     fillOpacity={fresh ? ".19" : ".10"}
-                    className="territory-fill"
+                    className={fresh ? "territory-fill capture-cell" : "territory-fill"}
+                    style={fresh ? { animationDelay: `${Math.min(cellIndex, 24) * 18}ms` } : undefined}
                   />
                 );
               })}
@@ -176,7 +178,7 @@ export function GameBoard({
                   fill="none"
                   stroke={playerColors[feedback?.liberated.includes(i) ? p : game.territory[i]]}
                   strokeWidth="2"
-                  className="capture-ring"
+                  className={`capture-ring ${feedback?.liberated.includes(i) ? "capture-ring-liberated" : "capture-ring-captured"}`}
                 />
               )}
               {focused && available && (
@@ -225,7 +227,7 @@ export function GameBoard({
         })}
       </svg>
       {feedback && (
-        <output className="capture-toast" key={feedback.id} aria-live="polite">
+        <output className={`capture-toast ${feedback.liberated.length ? "capture-toast-reconquest" : "capture-toast-capture"}`} key={feedback.id} aria-live="polite">
           <span className="capture-toast-title">
             {feedback.liberated.length ? "Territoire reconquis !" : "Capture !"}
           </span>
