@@ -22,7 +22,10 @@ export const SEALS = [
   "Crâne",
   "Constellation",
 ] as const;
-export const SEAL_STYLES = ["Cercle magique", "Chaînes", "Barrière", "Talismans", "Cube"] as const;
+export const SEAL_STYLES = [
+  "Cercle magique", "Chaînes", "Barrière", "Talismans", "Cube", "Éclair",
+  "Sakura", "Toile", "Enfer", "Vague", "Crâne", "Constellation",
+] as const;
 export const EFFECT_COLORS = ["#4ff3ff", "#ff8a3c", "#9fe8ff", "#ffe14a", "#c79bff"];
 export const ARENA_KEY = "kropki-arena-presentation-v1";
 export type ArenaSettings = {

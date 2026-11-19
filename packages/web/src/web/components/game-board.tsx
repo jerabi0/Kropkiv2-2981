@@ -149,22 +149,24 @@ export function GameBoard({
                     />
                   )}
                   {last?.x === x && last?.y === y && (
-                    <circle
-                      cx={cx}
-                      cy={cy}
-                      r="11"
-                      fill="none"
-                      stroke={playerColors[p]}
-                      strokeWidth="1"
-                      opacity=".55"
-                    />
-                    <circle
-                      className="last-move-point"
-                      cx={cx}
-                      cy={cy}
-                      r="6.2"
-                      fill={playerColors[p]}
-                    />
+                    <>
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r="11"
+                        fill="none"
+                        stroke={playerColors[p]}
+                        strokeWidth="1"
+                        opacity=".55"
+                      />
+                      <circle
+                        className="last-move-point"
+                        cx={cx}
+                        cy={cy}
+                        r="6.2"
+                        fill={playerColors[p]}
+                      />
+                    </>
                   )}
                 </>
               ) : (
