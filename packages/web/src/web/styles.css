@@ -4878,3 +4878,50 @@ dialog::backdrop {
 @media (prefers-reduced-motion: reduce) {
   .match-finale, .match-finale-icon { animation: none !important; }
 }
+
+
+/* Transitions d'état du duel : attente, confirmations, jeu et résultat. */
+.game-area [data-match-phase],
+.game-area .board-heading,
+.game-area .table-player,
+.game-area .online-players > div,
+.game-area .room-panel {
+  transition:
+    border-color 280ms ease,
+    background-color 280ms ease,
+    box-shadow 280ms ease,
+    opacity 280ms ease,
+    transform 280ms ease;
+}
+.game-area[data-match-phase="waiting"] .board-heading {
+  border-color: #ffffff18;
+}
+.game-area[data-match-phase="ready"] .board-heading {
+  border-color: #75e0b077;
+  box-shadow: 0 0 0 1px #75e0b71c, 0 0 22px #75e0b710;
+}
+.game-area[data-match-phase="active"] .board-heading {
+  border-color: #8ba9ff66;
+  box-shadow: 0 0 18px #8ba9ff12;
+}
+.game-area[data-match-phase="finished"] .board-heading {
+  border-color: #d5c28c66;
+}
+.game-area .table-player.is-playing,
+.game-area .online-players > div.active {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px #07102018;
+}
+.game-area[data-match-phase="finished"] .table-player,
+.game-area[data-match-phase="finished"] .online-players > div {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-area [data-match-phase],
+  .game-area .board-heading,
+  .game-area .table-player,
+  .game-area .online-players > div,
+  .game-area .room-panel {
+    transition: none !important;
+  }
+}
