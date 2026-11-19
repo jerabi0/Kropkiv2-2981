@@ -158,6 +158,13 @@ export function GameBoard({
                       strokeWidth="1"
                       opacity=".55"
                     />
+                    <circle
+                      className="last-move-point"
+                      cx={cx}
+                      cy={cy}
+                      r="6.2"
+                      fill={playerColors[p]}
+                    />
                   )}
                 </>
               ) : (
