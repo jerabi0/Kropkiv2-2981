@@ -472,7 +472,7 @@ export default function GamePage() {
                   </div>
                   {game.ended && review === null && (
                     <section
-                      className={"match-finale " + (match.result?.winner === null ? "match-finale-draw" : match.result?.winner === 1 ? "match-finale-win" : "match-finale-loss")}
+                      className={"match-finale " + (winningPlayer === null ? "match-finale-draw" : winningPlayer === 1 ? "match-finale-win" : "match-finale-loss")}
                       role="status"
                       aria-live="polite"
                     >
@@ -480,7 +480,7 @@ export default function GamePage() {
                       <div className="match-finale-copy">
                         <span className="match-finale-kicker">DUEL TERMINÉ</span>
                         <h2>
-                          {match.result?.winner === null
+                          {winningPlayer === null
                             ? "Égalité parfaite"
                             : mode === "computer"
                               ? match.result?.winner === 1 ? "Victoire !" : "Défaite"
