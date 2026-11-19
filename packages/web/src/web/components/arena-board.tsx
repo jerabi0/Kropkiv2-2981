@@ -260,19 +260,45 @@ export function ArenaBoard({
             aria-hidden="true"
           >
             <g
-              className="arena-strike"
+              className={`arena-strike element-strike-${s.element}`}
               transform={`translate(${26 + event.x * 32} ${26 + event.y * 32})`}
             >
-              <circle r="18" />
-              <path
-                d={
-                  s.element === 3
-                    ? "M5-25L-8 0H3L-5 25"
-                    : s.element === 1
-                      ? "M-9 12Q-18-5 0-24Q22 0 9 12Z"
-                      : "M0-22V22M-22 0H22M-15-15L15 15M15-15L-15 15"
-                }
-              />
+              <circle className="arena-impact-ring" r="17" />
+              {s.element === 0 && (
+                <>
+                  <circle className="element-neon-orbit" r="23" />
+                  <path className="element-neon-cross" d="M0-19V19M-19 0H19M-13-13L13 13M13-13L-13 13" />
+                  <circle className="element-neon-core" r="4" />
+                </>
+              )}
+              {s.element === 1 && (
+                <>
+                  <path className="element-fire-flame" d="M0 20C-18 8-12-5-2-23C0-12 13-9 12 3C22-3 22 13 0 20Z" />
+                  <path className="element-fire-core" d="M0 13C-7 6-2 0 2-8C3-1 9 2 6 8C5 11 3 12 0 13Z" />
+                  <path className="element-fire-spark" d="M-16-5l-5-7m36 8 5-8M-12 15l-7 4m29-4 7 4" />
+                </>
+              )}
+              {s.element === 2 && (
+                <>
+                  <path className="element-ice-crystal" d="M0-24L8-8L23 0L8 8L0 24L-8 8L-23 0L-8-8Z" />
+                  <path className="element-ice-shard" d="M0-18V18M-18 0H18M-13-13L13 13M13-13L-13 13" />
+                  <path className="element-ice-spark" d="M-22-18l-4-4m46 4 4-4m-46 46-4 4m46-4 4 4" />
+                </>
+              )}
+              {s.element === 3 && (
+                <>
+                  <path className="element-lightning-bolt" d="M5-25L-10 1H1L-5 25L13-5H3Z" />
+                  <path className="element-lightning-arc" d="M-20-8Q-28 0-18 9M20-8Q28 0 18 9" />
+                </>
+              )}
+              {s.element === 4 && (
+                <>
+                  <circle className="element-dark-void" r="13" />
+                  <circle className="element-dark-ring" r="22" />
+                  <path className="element-dark-rift" d="M-3-22L4-8L-5 1L4 9L-2 22" />
+                  <circle className="element-dark-eye" r="3" />
+                </>
+              )}
             </g>
             {event.feedback && (
               <>
