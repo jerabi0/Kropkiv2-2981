@@ -49,6 +49,8 @@ export function stopArenaAmbience() {
 
 export function startArenaAmbience(terrain: number, element: number, sealStyle: number) {
   if (!context || context.state !== "running" || document.hidden) return;
+  const key = `${terrain}:${element}:${sealStyle}`;
+  if (ambience?.key === key) return;
   stopArenaAmbience();
 
   const audio = context;
@@ -56,8 +58,6 @@ export function startArenaAmbience(terrain: number, element: number, sealStyle: 
   const interval = SEAL_INTERVALS[sealStyle] ?? SEAL_INTERVALS[0];
   const base = Math.max(55, (root / 3) * (1 + element * 0.018));
   const wave = terrain === 1 || terrain === 11 ? "triangle" : terrain === 3 ? "sawtooth" : "sine";
-  const key = `${terrain}:${element}:${sealStyle}`;
-  if (ambience?.key === key) return;
   const master = audio.createGain();
   master.gain.setValueAtTime(0.0001, audio.currentTime);
   master.gain.setTargetAtTime(0.0045, audio.currentTime, 0.8);
