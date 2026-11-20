@@ -111,12 +111,59 @@ test("ordinateur trouve une capture immédiate", () => {
     [3, 4],
   ])
     g.board[y * 7 + x] = 2;
-  expect(computerMove(g)).toEqual([2, 3]);
+  expect(computerMove(g, "normal", () => 0)).toEqual([2, 3]);
+});
+test("Tactique bloque une capture adverse imminente", () => {
+  const g = createGame(7, 7);
+  g.turn = 1;
+  g.board[3 * 7 + 3] = 1;
+  for (const [x, y] of [
+    [3, 2],
+    [4, 3],
+    [3, 4],
+  ])
+    g.board[y * 7 + x] = 2;
+  expect(computerMove(g, "normal", () => 0)).toEqual([2, 3]);
+});
+test("le générateur aléatoire injectable rend Découverte reproductible", () => {
+  const g = createGame(7, 7);
+  const rng = () => 0.25;
+  expect(computerMove(g, "easy", rng)).toEqual(computerMove(g, "easy", rng));
+});
+test("Tactique obtient un meilleur score cumulé que Découverte sur 20 parties", () => {
+  const seededRandom = (initialSeed: number) => {
+    let seed = initialSeed >>> 0;
+    return () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 0x100000000;
+    };
+  };
+  let tacticalScore = 0;
+  let discoveryScore = 0;
+
+  for (let match = 0; match < 20; match++) {
+    const tacticalPlayer = match % 2 === 0 ? 1 : 2;
+    const rng = seededRandom(match + 1);
+    let g = createGame(5, 5);
+
+    for (let turn = 0; turn < 25 && !g.ended; turn++) {
+      const level = g.turn === tacticalPlayer ? "normal" : "easy";
+      const move = computerMove(g, level, rng);
+      if (!move) break;
+      g = play(g, ...move);
+    }
+
+    const result = scores(g);
+    tacticalScore += result[tacticalPlayer];
+    discoveryScore += result[tacticalPlayer === 1 ? 2 : 1];
+  }
+
+  expect(tacticalScore).toBeGreaterThan(discoveryScore);
 });
 test("simulation complète ordinateur sans coup illégal", () => {
   let g = createGame(13, 11);
   for (let i = 0; i < 90 && !g.ended; i++) {
-    const m = computerMove(g);
+    const m = computerMove(g, "normal", () => 0);
     expect(m).not.toBeNull();
     expect(legal(g, ...m!)).toBe(true);
     g = play(g, ...m!);
