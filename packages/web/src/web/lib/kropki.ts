@@ -203,6 +203,7 @@ function onePlyValue(
   occupied: number[],
   rng: () => number,
   level: string,
+  threatValue: number,
 ) {
   const p = g.turn;
   const q = other(p);
@@ -210,12 +211,13 @@ function onePlyValue(
   return (
     (afterScores[p] - before[p]) * 100 -
     (afterScores[q] - before[q]) * 110 +
+    threatValue +
     cheapCandidateValue(g, index, occupied) +
     rng() * (level === "easy" ? 12 : 1.8)
   );
 }
 
-type SimulationKind = "candidate" | "threat" | "reply";
+type SimulationKind = "candidate" | "threat" | "reply" | "plan";
 
 export function computerMove(
   g: Game,
@@ -232,10 +234,11 @@ export function computerMove(
     .sort((a, b) => b.value - a.value || a.index - b.index);
 
   const budget = Math.max(0, Math.floor(simulationBudget));
-  // A zero budget still has a deterministic legal fallback. For a positive
-  // budget, the exhaustive first pass is the minimum safety cost: one own
-  // move is simulated for every legal candidate before any cheap-score filter.
-  if (budget === 0) {
+  // Every tactical candidate needs two mandatory simulations: our move and
+  // the opponent's same-cell threat. Never silently drop that defensive term.
+  const mandatoryBudget = candidates.length * (level === "easy" ? 1 : 2);
+  // A zero/insufficient budget still has a deterministic legal fallback.
+  if (budget < mandatoryBudget) {
     const fallback = cheapRanked[0].index;
     return [fallback % g.w, Math.floor(fallback / g.w)];
   }
@@ -247,9 +250,16 @@ export function computerMove(
     const y = Math.floor(candidate.index / g.w);
     const after = play(g, x, y);
     onSimulation?.("candidate");
+    let threatValue = 0;
+    if (level !== "easy") {
+      const threat = play({ ...g, turn: other(g.turn) }, x, y);
+      onSimulation?.("threat");
+      const threatScores = scores(threat);
+      threatValue = (threatScores[other(g.turn)] - before[other(g.turn)]) * 85;
+    }
     ranked.push({
       index: candidate.index,
-      value: onePlyValue(g, candidate.index, after, before, occupied, rng, level),
+      value: onePlyValue(g, candidate.index, after, before, occupied, rng, level, threatValue),
       after,
     });
   }
@@ -263,10 +273,10 @@ export function computerMove(
     return [choice % g.w, Math.floor(choice / g.w)];
   }
 
-  // Tactique first protects immediate captures across the whole candidate set.
-  // Deeper analysis is then limited to plans whose complete reply scan fits
-  // the remaining deterministic simulation budget.
-  const remainingBudget = Math.max(0, budget - candidates.length);
+  // All candidates already include the original same-cell defensive threat
+  // term. Share the remaining budget across all eight deeper plans instead
+  // of abandoning a plan when its complete reply set is too expensive.
+  const remainingBudget = Math.max(0, budget - mandatoryBudget);
   const plans = ranked.slice(0, 8).map((candidate) => {
     const { candidates: replies, occupied: replyOccupied } = candidateIndices(candidate.after);
     return {
@@ -281,26 +291,18 @@ export function computerMove(
     };
   });
 
-  let usedDeepBudget = 0;
+  const repliesPerPlan = Math.floor(remainingBudget / Math.max(1, plans.length));
   let best: RankedMove | null = null;
   const p = g.turn;
   const q = other(p);
 
   for (const plan of plans) {
-    // One same-cell threat simulation plus every legal reply simulation.
-    const planCost = 1 + plan.replies.length;
-    if (usedDeepBudget + planCost > remainingBudget) continue;
-
-    const x = plan.candidate.index % g.w;
-    const y = Math.floor(plan.candidate.index / g.w);
-    const threat = play({ ...g, turn: q }, x, y);
-    onSimulation?.("threat");
-    const threatScores = scores(threat);
-    const threatValue = (threatScores[q] - before[q]) * 85;
-
+    onSimulation?.("plan");
     const afterScores = scores(plan.candidate.after);
     let strongestReply = 0;
-    for (const reply of plan.replies) {
+    // Replies are pre-ranked cheaply; every plan gets the same budget-derived
+    // cap, so a dense board cannot starve the later defensive alternatives.
+    for (const reply of plan.replies.slice(0, repliesPerPlan)) {
       const replyGame = play(
         plan.candidate.after,
         reply.index % g.w,
@@ -314,8 +316,7 @@ export function computerMove(
       if (replyValue > strongestReply) strongestReply = replyValue;
     }
 
-    usedDeepBudget += planCost;
-    const value = plan.candidate.value + threatValue - strongestReply;
+    const value = plan.candidate.value - strongestReply;
     if (!best || value > best.value)
       best = { ...plan.candidate, value };
   }
