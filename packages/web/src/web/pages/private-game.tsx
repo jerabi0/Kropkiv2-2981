@@ -369,10 +369,10 @@ function Room({ id }: { id: string }) {
               </Link>
             )}
             {opponentDisconnected && (
-              <div className="ready-deadline" role="status">
+              <output className="ready-deadline">
                 <strong>Adversaire déconnecté</strong>
                 <p>Il lui reste {graceRemaining} s pour revenir. Sinon, il perdra la partie.</p>
-              </div>
+              </output>
             )}
             {data.startedAt && !ended && (
               <>

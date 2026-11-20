@@ -3,6 +3,7 @@ export const gameList = () => orpc.privateGames.list.queryOptions();
 export const roomQuery = (id: string) => ({
   ...orpc.privateGames.get.queryOptions({ input: { id } }),
   refetchInterval: 1000,
+  refetchIntervalInBackground: true,
   refetchOnWindowFocus: true,
 });
 export const createPrivate = () => orpc.privateGames.create.mutationOptions();
