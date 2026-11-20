@@ -16,6 +16,13 @@ describe("retour de vérification d'adresse", () => {
     });
   });
 
+  test("traite tout code d'erreur comme un échec de vérification", () => {
+    expect(getEmailVerificationState("?verified=1&error=NEW_UNKNOWN_CODE")).toEqual({
+      isVerificationResult: true,
+      error: "NEW_UNKNOWN_CODE",
+    });
+  });
+
   test("tolère aussi une erreur concaténée dans la valeur verified", () => {
     expect(getEmailVerificationState("?verified=1?error=invalid_token")).toEqual({
       isVerificationResult: true,
