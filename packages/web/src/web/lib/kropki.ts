@@ -168,28 +168,10 @@ function candidateIndices(g: Game) {
   return { candidates, occupied };
 }
 
-function heuristicValue(
-  g: Game,
-  index: number,
-  level: string,
-  rng: () => number,
-  occupied: number[],
-) {
+function cheapCandidateValue(g: Game, index: number, occupied: number[]) {
   const x = index % g.w;
   const y = Math.floor(index / g.w);
   const p = g.turn;
-  const q = other(p);
-  const before = scores(g);
-  const next = play(g, x, y);
-  const nextScores = scores(next);
-  let value = (nextScores[p] - before[p]) * 100 - (nextScores[q] - before[q]) * 110;
-
-  if (level !== "easy") {
-    const threat = play({ ...g, turn: q }, x, y);
-    const threatScores = scores(threat);
-    value += (threatScores[q] - before[q]) * 85;
-  }
-
   let own = 0;
   let enemy = 0;
   let near = 0;
@@ -204,12 +186,37 @@ function heuristicValue(
     }
     if (distance === 2 && g.board[j] === p) near++;
   }
-  value +=
+  return (
     own * 2.5 +
     enemy * 3 +
     near * 0.3 -
     (own > 4 ? 10 : 0) -
-    Math.hypot(x - g.w / 2, y - g.h / 2) * 0.12;
+    Math.hypot(x - g.w / 2, y - g.h / 2) * 0.12
+  );
+}
+
+function heuristicValue(
+  g: Game,
+  index: number,
+  level: string,
+  rng: () => number,
+  before: number[],
+) {
+  const x = index % g.w;
+  const y = Math.floor(index / g.w);
+  const p = g.turn;
+  const q = other(p);
+  const next = play(g, x, y);
+  const nextScores = scores(next);
+  let value = (nextScores[p] - before[p]) * 100 - (nextScores[q] - before[q]) * 110;
+
+  if (level !== "easy") {
+    const threat = play({ ...g, turn: q }, x, y);
+    const threatScores = scores(threat);
+    value += (threatScores[q] - before[q]) * 85;
+  }
+
+  value += cheapCandidateValue(g, index, g.board.map((v, i) => (v ? i : -1)).filter((i) => i >= 0));
   value += rng() * (level === "easy" ? 12 : 1.8);
   return value;
 }
@@ -218,20 +225,41 @@ export function computerMove(
   g: Game,
   level = "normal",
   rng: () => number = Math.random,
+  simulationBudget = 600,
 ): [number, number] | null {
   const { candidates, occupied } = candidateIndices(g);
   if (!candidates.length) return null;
 
-  const deadline = Date.now() + 300;
+  const cheapRanked = candidates
+    .map((index) => ({ index, value: cheapCandidateValue(g, index, occupied) }))
+    .sort((a, b) => b.value - a.value || a.index - b.index);
+
+  const budget = Math.max(0, Math.floor(simulationBudget));
+  const classificationBudget = level === "easy" ? budget : Math.floor(budget / 2);
+  const replyBudget = level === "easy" ? 0 : budget - classificationBudget;
+  const before = scores(g);
   const ranked: RankedMove[] = [];
-  for (const index of candidates) {
-    if (level !== "easy" && ranked.length > 0 && Date.now() >= deadline) break;
+  let classificationSimulations = 0;
+  const simulationsPerCandidate = level === "easy" ? 1 : 2;
+
+  // Cheaply rank the whole board first, then spend the expensive budget on the
+  // most promising positions instead of scanning from the top-left corner.
+  for (const candidate of cheapRanked) {
+    if (classificationSimulations + simulationsPerCandidate > classificationBudget) break;
     ranked.push({
-      index,
-      value: heuristicValue(g, index, level, rng, occupied),
+      index: candidate.index,
+      value: heuristicValue(g, candidate.index, level, rng, before),
     });
+    classificationSimulations += simulationsPerCandidate;
   }
-  ranked.sort((a, b) => b.value - a.value);
+
+  // Even a zero budget must produce a legal move whenever one exists.
+  if (!ranked.length) {
+    const fallback = cheapRanked[0].index;
+    return [fallback % g.w, Math.floor(fallback / g.w)];
+  }
+
+  ranked.sort((a, b) => b.value - a.value || a.index - b.index);
 
   // Découverte keeps the original one-ply heuristic and its wider random margin.
   if (level === "easy") {
@@ -239,10 +267,13 @@ export function computerMove(
     return [choice % g.w, Math.floor(choice / g.w)];
   }
 
-  // Tactique searches replies only for the ten strongest first moves.
+  // Tactique examines the eight strongest first moves. Each receives an equal
+  // reply-simulation allowance, making the search deterministic across devices.
   const shortlist = ranked.slice(0, 8);
   const p = g.turn;
   const q = other(p);
+  const perCandidateReplyBudget =
+    shortlist.length > 0 ? Math.floor(replyBudget / shortlist.length) : 0;
   let best: RankedMove | null = null;
 
   for (const candidate of shortlist) {
@@ -250,16 +281,18 @@ export function computerMove(
     const y = Math.floor(candidate.index / g.w);
     const after = play(g, x, y);
     const afterScores = scores(after);
-    const { candidates: replies } = candidateIndices(after);
-    let strongestReply = 0;
-    let completed = true;
+    const { candidates: replies, occupied: replyOccupied } = candidateIndices(after);
+    const replyRanked = replies
+      .map((index) => ({
+        index,
+        value: cheapCandidateValue(after, index, replyOccupied),
+      }))
+      .sort((a, b) => b.value - a.value || a.index - b.index);
 
-    for (const reply of replies) {
-      if (Date.now() >= deadline) {
-        completed = false;
-        break;
-      }
-      const replyGame = play(after, reply % g.w, Math.floor(reply / g.w));
+    let strongestReply = 0;
+    const repliesToCheck = replyRanked.slice(0, perCandidateReplyBudget);
+    for (const reply of repliesToCheck) {
+      const replyGame = play(after, reply.index % g.w, Math.floor(reply.index / g.w));
       const replyScores = scores(replyGame);
       const replyValue =
         (replyScores[q] - afterScores[q]) * 100 -
@@ -267,7 +300,6 @@ export function computerMove(
       if (replyValue > strongestReply) strongestReply = replyValue;
     }
 
-    if (!completed) break;
     const value = candidate.value - strongestReply;
     if (!best || value > best.value) best = { index: candidate.index, value };
   }
