@@ -17,6 +17,7 @@ Ouvrir http://localhost:4200. Les modes locaux n'exigent pas de compte utilisate
 ### Configuration à la racine uniquement
 
 - `DATABASE_URL` et `DATABASE_AUTH_TOKEN` : connexion SQLite/Turso. `db:push` crée les tables d'authentification, `kropki_private_game`, `kropki_rating`, `kropki_queue` et `kropki_rating_result` ; vérifier les changements proposés avant d'utiliser une base existante.
+- `TRUSTED_ORIGINS` : origines Web additionnelles autorisées par CORS et Better Auth, séparées par des virgules. Par défaut, seule l'origine `WEBSITE_URL` est admise.
 - `BETTER_AUTH_SECRET` : générer un secret privé aléatoire, par exemple avec `openssl rand -hex 32`.
 - `WEBSITE_URL` : origine publique de l'application, ou `http://localhost:4200` en développement.
 - `RESEND_API_KEY` : clé API Resend côté serveur. Laisser vide pour désactiver les e-mails d'authentification.
@@ -24,6 +25,14 @@ Ouvrir http://localhost:4200. Les modes locaux n'exigent pas de compte utilisate
 - `REQUIRE_EMAIL_VERIFICATION` : `false` par défaut. Mettre `true` pour exiger une adresse vérifiée avant une connexion e-mail/mot de passe. Cette option n'est appliquée que si Resend est configuré.
 - `APPLICATION_ID`, `VITE_APPLICATION_ID`, `VITE_RUNABLE_AUTH_ISSUER` : valeurs injectées par Runable pour Google géré. Le broker n'accepte que les origines enregistrées : le parcours Google a été vérifié jusqu'à l'écran Google depuis l'aperçu Runable, pas depuis localhost.
 - Les variables de passerelle IA/paiement du template ne sont pas utilisées par le moteur de Kropki.
+
+### Clients annexes
+
+Le client Mobile Expo est encore un socle de développement; ses écrans de jeu ne sont pas implémentés. L'URL d'API peut être fournie avec `EXPO_PUBLIC_API_URL`. Pour une compilation EAS `production`, `EXPO_ANDROID_PACKAGE`, `EXPO_IOS_BUNDLE_IDENTIFIER` et `EXPO_PUBLIC_API_URL` sont obligatoires. Renseigner les deux identifiants reverse-DNS attribués à l'éditeur dans l'environnement EAS.
+
+Le paquet Desktop embarque le build Web. `bun run build` le prépare; `bun run --cwd packages/desktop dist` produit les installateurs. L'identifiant de protocole Runable doit rester cohérent avec `APPLICATION_ID` configuré au déploiement.
+
+La migration des colonnes de présence en ligne doit être appliquée avant le déploiement de cette version avec `bun run db:push` depuis la racine, après vérification des changements proposés.
 
 Ne jamais publier `.env`. Google géré ne demande pas de secret OAuth Google personnel. L'authentification complète avec un vrai compte Google reste à vérifier par son titulaire.
 
@@ -45,9 +54,9 @@ Ne jamais publier `.env`. Google géré ne demande pas de secret OAuth Google pe
 - E-mails transactionnels via Resend : vérification à l'inscription et récupération du mot de passe (lien valable une heure). Les modèles sont en français. Sans `RESEND_API_KEY` et `EMAIL_FROM`, ces fonctions restent désactivées. La vérification n'est pas obligatoire par défaut afin de préserver l'accès des comptes existants.
 - `/connexion` : compte ; `/en-ligne` : création et historique personnel ; `/partie/:id` : invitation ou salle.
 - Un lien aléatoire invite un second compte. Un troisième compte ne peut ni rejoindre ni lire le plateau. Un lien non rejoint expire après 24 heures ; le démarrage exige les deux joueurs prêts avant cette échéance.
-- Trois tailles et les cinq durées communes. Le compte à rebours démarre au premier pion légalement placé après les deux confirmations et continue pendant une déconnexion. Pas de pause ni d'annulation en ligne.
+- Trois tailles et les cinq durées communes. Le compte à rebours démarre au premier pion légalement placé après les deux confirmations. Après 10 secondes sans signal, un joueur dispose de 60 secondes pour revenir; deux absences simultanées donnent un nul. Pas de pause manuelle en ligne.
 - Serveur autoritaire : appartenance à la salle, tour, légalité, expiration, score, abandon. Écritures conditionnées à la révision et déduplication des actions.
-- Plateau, coups, horaires et résultat sont persistés en base. Reconnexion par le même compte et le même lien ; synchronisation par interrogation du serveur toutes les secondes, sans WebSocket ni indicateur de présence adverse.
+- Plateau, coups, horaires, présence et résultat sont persistés en base. Reconnexion par le même compte et le même lien ; synchronisation et signal de présence par interrogation du serveur chaque seconde, sans WebSocket.
 - Relecture après la fin ; sauvegarde locale conservée séparément.
 - La livraison réelle des e-mails dépend d'une clé Resend et d'une adresse expéditrice validée. Vérifier ces deux paramètres dans l'environnement de déploiement avant de tester l'envoi.
 

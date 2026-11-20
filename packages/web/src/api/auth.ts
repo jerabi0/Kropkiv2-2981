@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { runableManagedAuth } from "@runablehq/managed-auth/server";
 import { db } from "./database";
 import { emailEnabled, sendPasswordResetEmail, sendVerificationEmail } from "./email";
+import { trustedOrigins } from "./trusted-origins";
 
 const canSendEmail = emailEnabled();
 const requireEmailVerification =
@@ -43,14 +44,7 @@ export const auth = betterAuth({
       }
     : {}),
   secret: process.env.BETTER_AUTH_SECRET,
-  trustedOrigins: (request) =>
-    Array.from(
-      new Set(
-        [process.env.WEBSITE_URL, request ? new URL(request.url).origin : undefined].filter(
-          (s): s is string => !!s,
-        ),
-      ),
-    ),
+  trustedOrigins,
   plugins: [
     ...runableManagedAuth({
       applicationId: process.env.APPLICATION_ID!,

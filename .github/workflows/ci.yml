@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - feat/online-disconnect-forfeit
+      - main
 
 permissions:
   contents: read
@@ -33,6 +33,10 @@ jobs:
       - name: Lint
         run: bun run lint
 
-      - name: Typecheck
+      - name: Vérifier les types de tous les clients
         if: always()
-        run: bun run --cwd packages/web typecheck
+        run: bun run typecheck
+
+      - name: Compiler les clients
+        if: always()
+        run: bun run build

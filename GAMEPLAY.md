@@ -15,6 +15,8 @@ La première sélection ne démarre pas le chrono ; le premier placement légal 
 En ligne, la sélection est attachée à la révision serveur pour survivre aux interrogations sans changement. Changement de position, attente/verrouillage, relecture, expiration ou changement de salle empêchent la confirmation d'une sélection périmée. Le serveur revalide toujours le coup ; aucune API modifiée.
 Une sélection n'est pas une sauvegarde de partie : recharger la page l'efface. Les coups confirmés restent sauvegardés selon le mécanisme optimisé du lot précédent.
 
+Après 10 secondes sans signal de présence en ligne, l’adversaire voit un délai de retour de 60 secondes. Une reconnexion dans ce délai annule la déconnexion; à l’échéance, le joueur absent perd. Si les deux délais expirent ensemble, le résultat est nul. Les horodatages de présence sont stockés indépendamment de la révision du plateau pour ne pas perturber les coups concurrents.
+
 ## Pédagogie
 Les quatre étapes du tutoriel enseignent sélection, aperçu et confirmation, dont une vraie capture +1. Partie personnelle isolée et chrono local en pause pendant le tutoriel. Les six exercices et leur progression existante sont conservés, sans nouvelle campagne fictive.
 

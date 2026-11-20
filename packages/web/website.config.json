@@ -1,8 +1,8 @@
 {
     "id": "website",
-    "name": "Runable",
-    "description": "A template for building a React application with Vite, Hono, and Cloudflare Workers",
-    "url": "https://example.com",
-    "hostname": "xyz.runable.site",
-    "port": 8080
+    "name": "Kropki",
+    "description": "Jeu de stratégie sur grille avec parties locales, entraînement et duels en ligne.",
+    "url": "https://kropki-ii6hw6w-preview-4200.runable.site",
+    "hostname": "kropki-ii6hw6w-preview-4200.runable.site",
+    "port": 4200
 }
