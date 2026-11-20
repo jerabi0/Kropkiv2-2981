@@ -11,7 +11,7 @@ export default function SignIn() {
     [forgot, setForgot] = useState(false),
     [resetToken, setResetToken] = useState(searchParams.get("token")),
     [resetInvalid, setResetInvalid] = useState(
-      ["INVALID_TOKEN", "invalid_token"].includes(searchParams.get("error") ?? ""),
+      searchParams.get("error") === "INVALID_TOKEN",
     ),
     [resetDone, setResetDone] = useState(false),
     [notice, setNotice] = useState(
@@ -29,7 +29,8 @@ export default function SignIn() {
   const { data } = authClient.useSession();
   const target = new URLSearchParams(window.location.search).get("retour") ?? "/en-ligne";
   const safe = target.startsWith("/") && !target.startsWith("//") ? target : "/en-ligne";
-  if (data && !resetToken && !resetInvalid && !resetDone) return <Redirect to={safe} />;
+  if (data && !resetToken && !resetInvalid && !resetDone && searchParams.get("verified") !== "1")
+    return <Redirect to={safe} />;
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -106,7 +107,7 @@ export default function SignIn() {
         window.history.replaceState(null, "", "/connexion");
         setResetToken(null);
         setResetDone(true);
-        setNotice("Ton mot de passe a été modifié. Tu peux maintenant te connecter.");
+        setNotice("");
       }
     } catch {
       window.history.replaceState(null, "", "/connexion?error=INVALID_TOKEN");
@@ -294,6 +295,7 @@ export default function SignIn() {
             <output className="online-error" aria-live="polite">
               {error}
             </output>
+            <output className="online-notice" aria-live="polite">{notice}</output>
             <button className="primary-button" disabled={busy}>
               {busy ? "Connexion…" : signup ? "Créer mon compte" : "Me connecter"}
               <ArrowRight size={17} />
