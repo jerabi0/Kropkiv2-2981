@@ -14,11 +14,15 @@ export default function SignIn() {
       ["INVALID_TOKEN", "invalid_token"].includes(searchParams.get("error") ?? ""),
     ),
     [resetDone, setResetDone] = useState(false),
-    [notice, setNotice] = useState(""),
+    [notice, setNotice] = useState(
+      searchParams.get("verified") === "1"
+        ? "Ton adresse e-mail a été confirmée. Tu peux maintenant te connecter."
+        : "",
+    ),
     [error, setError] = useState(
       searchParams.has("authErreur")
         ? "La connexion Google n’a pas abouti. Réessaie ou utilise ton e-mail."
-        : searchParams.has("error")
+        : searchParams.get("error") === "INVALID_TOKEN"
           ? "Ce lien de réinitialisation est invalide ou a expiré. Demande un nouveau lien."
           : "",
     );
@@ -35,7 +39,12 @@ export default function SignIn() {
       password = String(f.get("password"));
     try {
       const result = signup
-        ? await authClient.signUp.email({ email, password, name: String(f.get("name")).trim() })
+        ? await authClient.signUp.email({
+            email,
+            password,
+            name: String(f.get("name")).trim(),
+            callbackURL: `${window.location.origin}/connexion?verified=1`,
+          })
         : await authClient.signIn.email({ email, password });
       if (result.error)
         setError(
@@ -62,7 +71,7 @@ export default function SignIn() {
         redirectTo: `${window.location.origin}/connexion`,
       });
       if (result.error) {
-        setError("Impossible d’envoyer le lien. Vérifie la configuration e-mail ou réessaie plus tard.");
+        setError("La récupération par e-mail n'est pas disponible pour le moment. Réessaie plus tard.");
       } else {
         setNotice("Si un compte correspond à cette adresse, un lien de réinitialisation vient d’être envoyé. Il est valable une heure.");
       }
@@ -156,9 +165,7 @@ export default function SignIn() {
           {resetToken || resetInvalid || resetDone ? (
             <div className="auth-reset">
               <h2>{resetDone ? "Mot de passe modifié." : "Nouveau mot de passe"}</h2>
-              {resetDone ? (
-                <p>Ton mot de passe a été mis à jour.</p>
-              ) : resetInvalid ? (
+              {resetDone ? null : resetInvalid ? (
                 <p className="online-error" role="alert">
                   Ce lien est invalide ou a expiré. Demande un nouveau lien de réinitialisation.
                 </p>
