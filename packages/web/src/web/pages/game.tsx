@@ -245,7 +245,7 @@ export default function GamePage() {
       ? "Temps écoulé : le score décide. "
       : match.result?.reason === "resign"
         ? `${match.result.resignedBy === 1 ? "Les bleus abandonnent" : "Les rouges abandonnent"}. `
-        : "Plateau terminé. ";
+        : "Il ne reste plus d’intersection jouable. ";
   return (
     <div className="arena" id="top">
       <aside className="navigation-rail" aria-label="Navigation principale">
@@ -812,8 +812,8 @@ export default function GamePage() {
                 </li>
                 <li>
                   <strong>Le score décide.</strong> Un point adverse capturé = un point. La partie
-                  se termine quand le plateau est plein ou dès que le compte à rebours commun
-                  atteint zéro : le meilleur score gagne. À égalité, match nul. Abandonner donne la
+                  se termine lorsqu’il ne reste plus aucune intersection jouable ou dès que le compte à rebours
+                  commun atteint zéro : le meilleur score gagne. À égalité, match nul. Abandonner donne la
                   victoire à l’adversaire, quel que soit le score.
                 </li>
                 <li>
