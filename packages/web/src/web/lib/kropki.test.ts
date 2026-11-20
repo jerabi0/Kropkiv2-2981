@@ -145,6 +145,104 @@ test("Tactique préfère bloquer une capture ailleurs plutôt que prendre un gai
   expect(computerMove(g, "normal", () => 0)).toEqual([6, 3]);
 });
 
+test("Tactique trouve une capture sur un 21x17 dense même si le score bon marché la classe bas", () => {
+  const g = createGame(21, 17);
+
+  // 152 isolated-in-the-topology filler points: eight open horizontal lines.
+  for (let y = 8; y < 16; y++)
+    for (let x = 0; x < 19; x++)
+      g.board[y * g.w + x] = y % 2 === 0 ? 1 : 2;
+
+  // A five-point blue chain with a one-cell gap encloses a red centre.
+  for (const [x, y] of [
+    [3, 2],
+    [4, 2],
+    [5, 3],
+    [4, 4],
+    [3, 4],
+  ])
+    g.board[y * g.w + x] = 1;
+  g.board[3 * g.w + 3] = 2;
+
+  // A separate four-neighbour cluster gives a higher cheap-neighbour score.
+  for (const [x, y] of [
+    [10, 3],
+    [11, 4],
+    [10, 5],
+    [9, 4],
+  ])
+    g.board[y * g.w + x] = 1;
+
+  const cheapScore = (x: number, y: number) => {
+    let own = 0;
+    let enemy = 0;
+    let near = 0;
+    for (let i = 0; i < g.board.length; i++) {
+      if (!g.board[i] || captured(g, i)) continue;
+      const dx = Math.abs((i % g.w) - x);
+      const dy = Math.abs(Math.floor(i / g.w) - y);
+      const distance = Math.max(dx, dy);
+      if (distance === 1) {
+        if (g.board[i] === g.turn) own++;
+        else enemy++;
+      }
+      if (distance === 2 && g.board[i] === g.turn) near++;
+    }
+    return own * 2.5 + enemy * 3 + near * 0.3 - (own > 4 ? 10 : 0);
+  };
+
+  const before = scores(g);
+  const immediateCapture = play(g, 2, 3);
+  expect(scores(immediateCapture)[1] - before[1]).toBe(1);
+  expect(cheapScore(2, 3)).toBeLessThan(cheapScore(10, 4));
+  expect(computerMove(g, "normal", () => 0)).toEqual([2, 3]);
+});
+
+test("Tactique évite un gain immédiat qui ferait perdre deux points au tour adverse", () => {
+  const g = createGame(12, 9);
+  g.turn = 1;
+
+  // Tempting blue capture at (2, 3): it takes one red point.
+  g.board[3 * g.w + 3] = 2;
+  for (const [x, y] of [
+    [3, 2],
+    [4, 2],
+    [5, 3],
+    [4, 4],
+    [3, 4],
+  ])
+    g.board[y * g.w + x] = 1;
+
+  // Red has a nearly closed rectangle. Playing (5, 4) would capture
+  // the two blue points inside it; blue can safely occupy that gap first.
+  for (const [x, y] of [
+    [6, 2],
+    [7, 2],
+    [8, 2],
+    [9, 3],
+    [9, 4],
+    [9, 5],
+    [8, 6],
+    [7, 6],
+    [6, 6],
+    [5, 3],
+    [5, 5],
+  ])
+    g.board[y * g.w + x] = 2;
+  g.board[6 * g.w + 6] = 1;
+  g.board[7 * g.w + 7] = 1;
+
+  const before = scores(g);
+  const tempting = play(g, 2, 3);
+  expect(scores(tempting)[1] - before[1]).toBe(1);
+  const opponentReply = play(tempting, 5, 4);
+  expect(scores(opponentReply)[2] - scores(tempting)[2]).toBe(2);
+
+  const safe = play(g, 5, 4);
+  expect(scores(safe)[1] - before[1]).toBe(0);
+  expect(computerMove(g, "normal", () => 0)).toEqual([5, 4]);
+});
+
 test("Tactique renvoie un coup légal avec un budget de simulation nul", () => {
   const g = createGame(21, 17);
   const move = computerMove(g, "normal", () => 0, 0);
