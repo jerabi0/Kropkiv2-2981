@@ -89,6 +89,7 @@ export default function SignIn() {
     try {
       const result = await authClient.resetPassword({ newPassword: password, token: resetToken });
       if (result.error) {
+        window.history.replaceState(null, "", "/connexion?error=INVALID_TOKEN");
         setResetInvalid(true);
         setResetToken(null);
         setError("Ce lien de réinitialisation est invalide ou a expiré. Demande un nouveau lien.");
@@ -99,6 +100,9 @@ export default function SignIn() {
         setNotice("Ton mot de passe a été modifié. Tu peux maintenant te connecter.");
       }
     } catch {
+      window.history.replaceState(null, "", "/connexion?error=INVALID_TOKEN");
+      setResetInvalid(true);
+      setResetToken(null);
       setError("Ce lien de réinitialisation est invalide ou a expiré. Demande un nouveau lien.");
     } finally {
       setBusy(false);
