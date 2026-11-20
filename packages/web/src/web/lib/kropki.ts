@@ -234,14 +234,13 @@ export function computerMove(
     .sort((a, b) => b.value - a.value || a.index - b.index);
 
   const budget = Math.max(0, Math.floor(simulationBudget));
-  // Every tactical candidate needs two mandatory simulations: our move and
-  // the opponent's same-cell threat. Never silently drop that defensive term.
-  const mandatoryBudget = candidates.length * (level === "easy" ? 1 : 2);
-  // A zero/insufficient budget still has a deterministic legal fallback.
-  if (budget < mandatoryBudget) {
+  // Only an explicitly unusable budget skips simulation; a positive budget
+  // always performs the complete defensive first pass, even if it exceeds it.
+  if (!Number.isFinite(simulationBudget) || simulationBudget <= 0) {
     const fallback = cheapRanked[0].index;
     return [fallback % g.w, Math.floor(fallback / g.w)];
   }
+  const mandatoryBudget = candidates.length * (level === "easy" ? 1 : 2);
 
   const before = scores(g);
   const ranked: RankedMove[] = [];
