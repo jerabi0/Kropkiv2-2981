@@ -20,6 +20,7 @@ async function sendEmail(message: AuthEmail) {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from, ...message }),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(`Échec de l’envoi Resend (HTTP ${response.status}).`);
 }
