@@ -5043,3 +5043,21 @@ dialog::backdrop {
   .arena-stage .last-move-point { opacity: 1; transform: none; }
   .arena-stage .move-placement-ripple { opacity: .18; transform: none; }
 }
+
+
+/* Le compteur réagit aux variations du score, sans modifier le calcul des points. */
+.score-value {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+.score-value-active {
+  animation: score-value-pop 380ms cubic-bezier(.16,.78,.25,1) both;
+}
+@keyframes score-value-pop {
+  0% { opacity: .55; transform: translateY(4px) scale(.82); }
+  65% { opacity: 1; transform: translateY(-1px) scale(1.12); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .score-value-active { animation: none !important; }
+}
