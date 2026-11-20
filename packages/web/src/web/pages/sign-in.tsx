@@ -179,7 +179,7 @@ export default function SignIn() {
                     ? "Ton adresse e-mail est confirmée. Tu peux accéder à tes parties."
                     : "Ton adresse e-mail est confirmée. Tu peux maintenant te connecter."}
               </p>
-              {data ? (
+              {data && !verificationError ? (
                 <a className="primary-button" href="/en-ligne">
                   Accéder à Kropki <ArrowRight size={17} />
                 </a>
