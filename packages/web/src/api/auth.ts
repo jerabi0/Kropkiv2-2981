@@ -25,7 +25,7 @@ export const auth = betterAuth({
     requireEmailVerification,
     ...(canSendEmail
       ? {
-          sendResetPassword: async ({ user, url }) => {
+          sendResetPassword: async ({ user, url }: { user: { email: string }; url: string }) => {
             void sendPasswordResetEmail(user.email, url).catch(reportEmailFailure);
           },
         }
@@ -36,7 +36,7 @@ export const auth = betterAuth({
         emailVerification: {
           sendOnSignUp: true,
           expiresIn: 60 * 60,
-          sendVerificationEmail: async ({ user, url }) => {
+          sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
             void sendVerificationEmail(user.email, url).catch(reportEmailFailure);
           },
         },
