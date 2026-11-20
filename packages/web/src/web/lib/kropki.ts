@@ -140,67 +140,186 @@ export function replay(moves: Move[], w: number, h: number) {
   for (const m of moves) g = play(g, m.x, m.y);
   return g;
 }
-export function computerMove(g: Game, level = "normal"): [number, number] | null {
+
+type RankedMove = { index: number; value: number; after: Game };
+
+function candidateIndices(g: Game) {
   const candidates: number[] = [];
   const occupied = g.board.map((v, i) => (v ? i : -1)).filter((i) => i >= 0);
-  for (let i = 0; i < g.board.length; i++)
+  for (let i = 0; i < g.board.length; i++) {
+    const x = i % g.w;
+    const y = Math.floor(i / g.w);
     if (
-      legal(g, i % g.w, Math.floor(i / g.w)) &&
+      legal(g, x, y) &&
       (!occupied.length ||
         occupied.some(
           (j) =>
             Math.max(
-              Math.abs((j % g.w) - (i % g.w)),
-              Math.abs(Math.floor(j / g.w) - Math.floor(i / g.w)),
+              Math.abs((j % g.w) - x),
+              Math.abs(Math.floor(j / g.w) - y),
             ) <= 2,
         ))
     )
       candidates.push(i);
+  }
   if (!candidates.length)
     for (let i = 0; i < g.board.length; i++)
       if (legal(g, i % g.w, Math.floor(i / g.w))) candidates.push(i);
-  if (!candidates.length) return null;
-  const p = g.turn,
-    q = other(p),
-    before = scores(g);
-  let best = -Infinity,
-    choice = candidates[0];
-  for (const i of candidates) {
-    const x = i % g.w,
-      y = Math.floor(i / g.w),
-      n = play(g, x, y),
-      s = scores(n);
-    let value = (s[p] - before[p]) * 100 - (s[q] - before[q]) * 110;
-    if (level !== "easy") {
-      const threat = play({ ...g, turn: q }, x, y),
-        ts = scores(threat);
-      value += (ts[q] - before[q]) * 85;
+  return { candidates, occupied };
+}
+
+function cheapCandidateValue(g: Game, index: number, occupied: number[]) {
+  const x = index % g.w;
+  const y = Math.floor(index / g.w);
+  const p = g.turn;
+  let own = 0;
+  let enemy = 0;
+  let near = 0;
+  for (const j of occupied) {
+    if (captured(g, j)) continue;
+    const dx = Math.abs((j % g.w) - x);
+    const dy = Math.abs(Math.floor(j / g.w) - y);
+    const distance = Math.max(dx, dy);
+    if (distance === 1) {
+      if (g.board[j] === p) own++;
+      else enemy++;
     }
-    let own = 0,
-      enemy = 0,
-      near = 0;
-    for (const j of occupied) {
-      if (captured(g, j)) continue;
-      const dx = Math.abs((j % g.w) - x),
-        dy = Math.abs(Math.floor(j / g.w) - y),
-        d = Math.max(dx, dy);
-      if (d === 1) {
-        if (g.board[j] === p) own++;
-        else enemy++;
-      }
-      if (d === 2 && g.board[j] === p) near++;
-    }
-    value +=
-      own * 2.5 +
-      enemy * 3 +
-      near * 0.3 -
-      (own > 4 ? 10 : 0) -
-      Math.hypot(x - g.w / 2, y - g.h / 2) * 0.12;
-    value += Math.random() * (level === "easy" ? 12 : 1.8);
-    if (value > best) {
-      best = value;
-      choice = i;
-    }
+    if (distance === 2 && g.board[j] === p) near++;
   }
+  return (
+    own * 2.5 +
+    enemy * 3 +
+    near * 0.3 -
+    (own > 4 ? 10 : 0) -
+    Math.hypot(x - g.w / 2, y - g.h / 2) * 0.12
+  );
+}
+
+function onePlyValue(
+  g: Game,
+  index: number,
+  after: Game,
+  before: number[],
+  occupied: number[],
+  rng: () => number,
+  level: string,
+  threatValue: number,
+) {
+  const p = g.turn;
+  const q = other(p);
+  const afterScores = scores(after);
+  return (
+    (afterScores[p] - before[p]) * 100 -
+    (afterScores[q] - before[q]) * 110 +
+    threatValue +
+    cheapCandidateValue(g, index, occupied) +
+    rng() * (level === "easy" ? 12 : 1.8)
+  );
+}
+
+type SimulationKind = "candidate" | "threat" | "reply" | "plan";
+
+export function computerMove(
+  g: Game,
+  level = "normal",
+  rng: () => number = Math.random,
+  simulationBudget = 600,
+  onSimulation?: (kind: SimulationKind) => void,
+): [number, number] | null {
+  const { candidates, occupied } = candidateIndices(g);
+  if (!candidates.length) return null;
+
+  const cheapRanked = candidates
+    .map((index) => ({ index, value: cheapCandidateValue(g, index, occupied) }))
+    .sort((a, b) => b.value - a.value || a.index - b.index);
+
+  const budget = Math.max(0, Math.floor(simulationBudget));
+  // Only an explicitly unusable budget skips simulation; a positive budget
+  // always performs the complete defensive first pass, even if it exceeds it.
+  if (!Number.isFinite(simulationBudget) || simulationBudget <= 0) {
+    const fallback = cheapRanked[0].index;
+    return [fallback % g.w, Math.floor(fallback / g.w)];
+  }
+  const mandatoryBudget = candidates.length * (level === "easy" ? 1 : 2);
+
+  const before = scores(g);
+  const ranked: RankedMove[] = [];
+  for (const candidate of cheapRanked) {
+    const x = candidate.index % g.w;
+    const y = Math.floor(candidate.index / g.w);
+    const after = play(g, x, y);
+    onSimulation?.("candidate");
+    let threatValue = 0;
+    if (level !== "easy") {
+      const threat = play({ ...g, turn: other(g.turn) }, x, y);
+      onSimulation?.("threat");
+      const threatScores = scores(threat);
+      threatValue = (threatScores[other(g.turn)] - before[other(g.turn)]) * 85;
+    }
+    ranked.push({
+      index: candidate.index,
+      value: onePlyValue(g, candidate.index, after, before, occupied, rng, level, threatValue),
+      after,
+    });
+  }
+
+  ranked.sort((a, b) => b.value - a.value || a.index - b.index);
+
+  // Découverte keeps its one-ply behaviour, but the first pass now checks
+  // every legal candidate instead of truncating the board scan.
+  if (level === "easy") {
+    const choice = ranked[0].index;
+    return [choice % g.w, Math.floor(choice / g.w)];
+  }
+
+  // All candidates already include the original same-cell defensive threat
+  // term. Share the remaining budget across all eight deeper plans instead
+  // of abandoning a plan when its complete reply set is too expensive.
+  const remainingBudget = Math.max(0, budget - mandatoryBudget);
+  const plans = ranked.slice(0, 8).map((candidate) => {
+    const { candidates: replies, occupied: replyOccupied } = candidateIndices(candidate.after);
+    return {
+      candidate,
+      replies: replies
+        .map((index) => ({
+          index,
+          value: cheapCandidateValue(candidate.after, index, replyOccupied),
+        }))
+        .sort((a, b) => b.value - a.value || a.index - b.index),
+      replyOccupied,
+    };
+  });
+
+  const repliesPerPlan = Math.floor(remainingBudget / Math.max(1, plans.length));
+  let best: RankedMove | null = null;
+  const p = g.turn;
+  const q = other(p);
+
+  for (const plan of plans) {
+    onSimulation?.("plan");
+    const afterScores = scores(plan.candidate.after);
+    let strongestReply = 0;
+    // Replies are pre-ranked cheaply; every plan gets the same budget-derived
+    // cap, so a dense board cannot starve the later defensive alternatives.
+    for (const reply of plan.replies.slice(0, repliesPerPlan)) {
+      const replyGame = play(
+        plan.candidate.after,
+        reply.index % g.w,
+        Math.floor(reply.index / g.w),
+      );
+      onSimulation?.("reply");
+      const replyScores = scores(replyGame);
+      const replyValue =
+        (replyScores[q] - afterScores[q]) * 100 -
+        (replyScores[p] - afterScores[p]) * 110;
+      if (replyValue > strongestReply) strongestReply = replyValue;
+    }
+
+    const value = plan.candidate.value - strongestReply;
+    if (!best || value > best.value)
+      best = { ...plan.candidate, value };
+  }
+
+  const choice = (best ?? ranked[0]).index;
   return [choice % g.w, Math.floor(choice / g.w)];
 }
