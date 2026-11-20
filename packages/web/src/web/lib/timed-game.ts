@@ -2,9 +2,10 @@ import { createGame, play, replay, scores, other, type Game, type Player } from 
 export const CADENCES = [3, 5, 7, 10, 30] as const;
 export type Clock = { minutes: number; remaining: number; paused: boolean; started: boolean; since: number | null };
 export type Result = {
-  reason: "time" | "full" | "resign" | "score";
+  reason: "time" | "full" | "resign" | "score" | "disconnect";
   winner: Player | null;
   resignedBy?: Player;
+  disconnectedBy?: Player;
 };
 export type TimedMatch = {
   version: 3;

@@ -1,6 +1,8 @@
 import { ORPCError } from "@orpc/server";
 import { createGame, legal, play, other, type Game, type Player } from "../../web/lib/kropki";
 import { scoreWinner, type Result } from "../../web/lib/timed-game";
+export const PRESENCE_TIMEOUT_MS = 10_000;
+export const DISCONNECT_GRACE_MS = 60_000;
 export type Participant = { id: string; name: string };
 export type OnlineGame = {
   game: Game;
@@ -46,6 +48,33 @@ export function newOnlineGame(
 }
 export function side(g: OnlineGame, id: string): Player | null {
   return g.blue.id === id ? 1 : g.red?.id === id ? 2 : null;
+}
+export function expireDisconnected(
+  g: OnlineGame,
+  lastSeenAt: [number, number],
+  now: number,
+): OnlineGame {
+  if (g.startedAt === null || g.result || g.cancelled) return g;
+  const expired = lastSeenAt
+    .map((seenAt, index) => ({
+      player: (index + 1) as Player,
+      deadline: seenAt > 0 ? seenAt + PRESENCE_TIMEOUT_MS + DISCONNECT_GRACE_MS : Infinity,
+    }))
+    .filter((entry) => now >= entry.deadline)
+    .sort((a, b) => a.deadline - b.deadline);
+  if (!expired.length) return g;
+  const first = expired[0];
+  const simultaneous = expired[1]?.deadline === first.deadline;
+  return {
+    ...g,
+    game: { ...g.game, ended: true },
+    finishedAt: first.deadline,
+    result: {
+      reason: "disconnect",
+      winner: simultaneous ? null : other(first.player),
+      ...(simultaneous ? {} : { disconnectedBy: first.player }),
+    },
+  };
 }
 export function expire(g: OnlineGame, now: number): OnlineGame {
   if (g.ranked && g.startedAt === null && !g.result && !g.cancelled && now >= g.expiresAt)

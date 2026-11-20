@@ -3,7 +3,7 @@ import { ORPCError } from "@orpc/server";
 import { db } from "../database";
 import { privateGames as rooms } from "../database/online-schema";
 import { ratings, ratingResults } from "../database/ranked-schema";
-import { expire, type OnlineGame } from "./online-game";
+import { expire, expireDisconnected, type OnlineGame } from "./online-game";
 import { eloDelta } from "./elo";
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export type RoomRow = typeof rooms.$inferSelect;
@@ -55,11 +55,24 @@ export async function saveRoom(tx: Tx, row: RoomRow, next: OnlineGame) {
   if (!saved) throw new ORPCError("CONFLICT", { message: "La partie a changé. Actualise-la." });
   return { row: saved, state };
 }
-export async function loadRoom(tx: Tx, id: string) {
-  const [row] = await tx.select().from(rooms).where(eq(rooms.id, id));
-  if (!row) throw new ORPCError("NOT_FOUND", { message: "Invitation introuvable." });
+export async function loadRoom(tx: Tx, id: string, now = Date.now()) {
+  const [initial] = await tx.select().from(rooms).where(eq(rooms.id, id));
+  if (!initial) throw new ORPCError("NOT_FOUND", { message: "Invitation introuvable." });
+  let row = initial;
+  const baseline = {
+    ...(row.blueSeenAt === 0 ? { blueSeenAt: now } : {}),
+    ...(row.redId && row.redSeenAt === 0 ? { redSeenAt: now } : {}),
+  };
+  if (Object.keys(baseline).length) {
+    const [updated] = await tx.update(rooms).set(baseline).where(eq(rooms.id, row.id)).returning();
+    if (updated) row = updated;
+  }
   const old = JSON.parse(row.state) as OnlineGame;
-  const state = expire(old, Date.now());
+  const timed = expire(old, now);
+  const state =
+    timed.result || timed.cancelled
+      ? timed
+      : expireDisconnected(timed, [row.blueSeenAt, row.redSeenAt], now);
   if (state !== old || (state.ranked && state.result && !state.rating))
     return saveRoom(tx, row, state);
   return { row, state };

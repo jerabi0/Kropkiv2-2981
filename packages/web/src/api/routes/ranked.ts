@@ -6,7 +6,7 @@ import { privateGames } from "../database/online-schema";
 import { matchQueue, ratingResults } from "../database/ranked-schema";
 import { search } from "../services/matchmaking";
 import { profile, loadRoom } from "../services/rooms";
-import { type OnlineGame, expire } from "../services/online-game";
+import { type OnlineGame } from "../services/online-game";
 const config = z.object({
   size: z.union([z.literal(13), z.literal(17), z.literal(21)]),
   minutes: z.union([
@@ -42,15 +42,7 @@ export const ranked = {
         )
         .orderBy(desc(privateGames.createdAt));
       const games: { row: typeof privateGames.$inferSelect; state: OnlineGame }[] = [];
-      for (const row of own) {
-        const old = JSON.parse(row.state) as OnlineGame,
-          state = expire(old, Date.now());
-        games.push(
-          state !== old || (state.ranked && state.result && !state.rating)
-            ? await loadRoom(tx, row.id)
-            : { row, state },
-        );
-      }
+      for (const row of own) games.push(await loadRoom(tx, row.id));
       const p = await profile(tx, context.user.id);
       const ledger = await tx
         .select()

@@ -89,6 +89,8 @@ export async function seek(
       redId: r.userId,
       state: JSON.stringify(state),
       createdAt: now,
+      blueSeenAt: now,
+      redSeenAt: now,
     });
   for (const player of [q, opponent])
     await tx.update(matchQueue).set({ roomId: id }).where(eq(matchQueue.userId, player.userId));

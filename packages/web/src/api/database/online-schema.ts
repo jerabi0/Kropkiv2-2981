@@ -11,6 +11,8 @@ export const privateGames = sqliteTable(
     state: text("state").notNull(),
     revision: integer("revision").notNull().default(0),
     createdAt: integer("created_at").notNull(),
+    blueSeenAt: integer("blue_seen_at").notNull().default(0),
+    redSeenAt: integer("red_seen_at").notNull().default(0),
   },
   (table) => [index("kropki_blue_idx").on(table.blueId), index("kropki_red_idx").on(table.redId)],
 );

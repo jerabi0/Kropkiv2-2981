@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { newOnlineGame, joinGame, act, expire, publicState } from "./online-game";
+import { newOnlineGame, joinGame, act, expire, expireDisconnected, publicState, PRESENCE_TIMEOUT_MS, DISCONNECT_GRACE_MS } from "./online-game";
 const blue = { id: "b", name: "Bleu" },
   red = { id: "r", name: "Rouge" };
 function ready() {
@@ -81,4 +81,38 @@ test("classé prêt sans premier coup : annulation sans résultat ni Elo", () =>
  expect(n.result).toBeNull();
  const started=act(g,"b",{type:"move",x:1,y:1},"start",89999);
  expect(expire(started,90000).cancelled).toBeUndefined();
+});
+
+test("une déconnexion donne une minute de grâce après la tolérance réseau", () => {
+  const started = act(ready(), "b", { type: "move", x: 1, y: 1 }, "start", 2000);
+  const deadline = 2000 + PRESENCE_TIMEOUT_MS + DISCONNECT_GRACE_MS;
+  const lastSeen: [number, number] = [2000, deadline];
+  expect(expireDisconnected(started, lastSeen, deadline - 1).result).toBeNull();
+  expect(expireDisconnected(started, lastSeen, deadline).result).toEqual({
+    reason: "disconnect",
+    winner: 2,
+    disconnectedBy: 1,
+  });
+});
+test("un joueur qui revient pendant la grâce ne perd pas", () => {
+  const started = act(ready(), "b", { type: "move", x: 1, y: 1 }, "start", 2000);
+  const reconnected: [number, number] = [2000 + PRESENCE_TIMEOUT_MS + 30000, 2000 + PRESENCE_TIMEOUT_MS + 30000];
+  expect(expireDisconnected(started, reconnected, 2000 + PRESENCE_TIMEOUT_MS + DISCONNECT_GRACE_MS + 1).result).toBeNull();
+});
+test("deux déconnexions simultanées terminent en égalité", () => {
+  const started = act(ready(), "b", { type: "move", x: 1, y: 1 }, "start", 2000);
+  const deadline = 2000 + PRESENCE_TIMEOUT_MS + DISCONNECT_GRACE_MS;
+  expect(expireDisconnected(started, [2000, 2000], deadline).result).toEqual({
+    reason: "disconnect",
+    winner: null,
+  });
+});
+test("une partie déjà terminée ne change pas de résultat après une déconnexion", () => {
+  const started = act(ready(), "b", { type: "move", x: 1, y: 1 }, "start", 2000);
+  const resigned = act(started, "b", { type: "resign" }, "resign", 3000);
+  expect(expireDisconnected(resigned, [2000, 2000], 200000).result).toEqual({
+    reason: "resign",
+    winner: 2,
+    resignedBy: 1,
+  });
 });

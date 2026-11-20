@@ -2,6 +2,9 @@ name: CI
 
 on:
   pull_request:
+  push:
+    branches:
+      - feat/online-disconnect-forfeit
 
 permissions:
   contents: read
@@ -23,6 +26,8 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Tests
+        env:
+          DATABASE_URL: file::memory:
         run: bun test packages/web/src/web/lib packages/web/src/api/services
 
       - name: Lint
