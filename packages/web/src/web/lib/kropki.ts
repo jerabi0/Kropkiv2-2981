@@ -273,8 +273,11 @@ export function computerMove(
   const shortlist = ranked.slice(0, 8);
   const p = g.turn;
   const q = other(p);
+  // Replaying each shortlisted first move also consumes one simulation.
   const perCandidateReplyBudget =
-    shortlist.length > 0 ? Math.floor(replyBudget / shortlist.length) : 0;
+    shortlist.length > 0
+      ? Math.max(0, Math.floor(replyBudget / shortlist.length) - 1)
+      : 0;
   let best: RankedMove | null = null;
 
   for (const candidate of shortlist) {
