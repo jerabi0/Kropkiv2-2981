@@ -10,14 +10,45 @@ import {
   newOnlineGame,
   joinGame,
   act,
-  expire,
   publicState,
   side,
   type OnlineGame,
+  PRESENCE_TIMEOUT_MS,
+  DISCONNECT_GRACE_MS,
 } from "../services/online-game";
 const room = z.object({ id: z.string().regex(/^[a-f0-9]{48}$/) });
+async function touchPresence(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  row: typeof table.$inferSelect,
+  userId: string,
+  now: number,
+) {
+  if (row.blueId === userId) {
+    const [updated] = await tx.update(table).set({ blueSeenAt: now }).where(eq(table.id, row.id)).returning();
+    return updated ?? row;
+  }
+  if (row.redId === userId) {
+    const [updated] = await tx.update(table).set({ redSeenAt: now }).where(eq(table.id, row.id)).returning();
+    return updated ?? row;
+  }
+  return row;
+}
 function response(row: typeof table.$inferSelect, state: OnlineGame, id: string) {
-  return { id: row.id, revision: row.revision, serverNow: Date.now(), ...publicState(state, id) };
+  const player = side(state, id);
+  return {
+    id: row.id,
+    revision: row.revision,
+    serverNow: Date.now(),
+    ...publicState(state, id),
+    presence: player
+      ? {
+          blueLastSeenAt: row.blueSeenAt,
+          redLastSeenAt: row.redSeenAt,
+          heartbeatTimeoutMs: PRESENCE_TIMEOUT_MS,
+          disconnectGraceMs: DISCONNECT_GRACE_MS,
+        }
+      : null,
+  };
 }
 export const privateGames = {
   create: authed
@@ -44,13 +75,16 @@ export const privateGames = {
       );
       await db
         .insert(table)
-        .values({ id, blueId: context.user.id, state: JSON.stringify(state), createdAt: now });
+        .values({ id, blueId: context.user.id, state: JSON.stringify(state), createdAt: now, blueSeenAt: now });
       return { id };
     }),
-  get: authed.input(room).handler(async ({ input, context }) => {
-    const { row, state } = await read(input.id);
-    return response(row, state, context.user.id);
-  }),
+  get: authed.input(room).handler(async ({ input, context }) =>
+    db.transaction(async (tx) => {
+      const { row, state } = await loadRoom(tx, input.id);
+      const current = state.result || state.cancelled ? row : await touchPresence(tx, row, context.user.id, Date.now());
+      return response(current, state, context.user.id);
+    }),
+  ),
   join: authed.input(room).handler(async ({ input, context }) => {
     const { row, state } = await read(input.id);
     const next = joinGame(
@@ -61,7 +95,7 @@ export const privateGames = {
     if (next === state) return response(row, state, context.user.id);
     const [saved] = await db
       .update(table)
-      .set({ redId: context.user.id, state: JSON.stringify(next), revision: row.revision + 1 })
+      .set({ redId: context.user.id, redSeenAt: Date.now(), state: JSON.stringify(next), revision: row.revision + 1 })
       .where(and(eq(table.id, row.id), eq(table.revision, row.revision)))
       .returning();
     if (!saved)
@@ -94,25 +128,27 @@ export const privateGames = {
           state.requests.includes(context.user.id + ":" + input.requestId)
         )
           return response(row, state, context.user.id);
+        const activeRow = await touchPresence(tx, row, context.user.id, Date.now());
         if (input.action.type === "move" && row.revision !== input.revision)
           throw new ORPCError("CONFLICT", {
             message: "La partie a changé : attends sa synchronisation.",
           });
         const next = act(state, context.user.id, input.action, input.requestId, Date.now());
-        const saved = await saveRoom(tx, row, next);
+        const saved = await saveRoom(tx, activeRow, next);
         return response(saved.row, saved.state, context.user.id);
       }),
     ),
-  list: authed.handler(async ({ context }) => {
-    const rows = await db
-      .select()
-      .from(table)
-      .where(or(eq(table.blueId, context.user.id), eq(table.redId, context.user.id)))
-      .orderBy(desc(table.createdAt))
-      .limit(50);
-    return rows.map((row) => {
-      const s = expire(JSON.parse(row.state) as OnlineGame, Date.now());
-      return {
+  list: authed.handler(async ({ context }) =>
+    db.transaction(async (tx) => {
+      const rows = await tx
+        .select()
+        .from(table)
+        .where(or(eq(table.blueId, context.user.id), eq(table.redId, context.user.id)))
+        .orderBy(desc(table.createdAt))
+        .limit(50);
+      const games: { row: typeof table.$inferSelect; state: OnlineGame }[] = [];
+      for (const row of rows) games.push(await loadRoom(tx, row.id));
+      return games.map(({ row, state: s }) => ({
         id: row.id,
         blue: s.blue.name,
         red: s.red?.name ?? null,
@@ -128,7 +164,7 @@ export const privateGames = {
             : s.startedAt
               ? "En cours"
               : "En attente",
-      };
-    });
-  }),
+      }));
+    }),
+  ),
 };

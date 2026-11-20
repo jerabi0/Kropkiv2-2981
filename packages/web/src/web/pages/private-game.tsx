@@ -131,16 +131,26 @@ function Room({ id }: { id: string }) {
       ? data.minutes * 60000
       : Math.max(0, data.deadline - (ended ? (data.finishedAt ?? data.serverNow) : now - offset));
   const result = data.result
-    ? (data.result.reason === "time" ? "Temps écoulé : " : "") +
+    ? (data.result.reason === "time" ? "Temps écoulé : " : data.result.reason === "disconnect" ? "Déconnexion : " : "") +
       (data.result.winner === null
         ? "Égalité parfaite."
         : data.result.winner === 1
           ? "Les bleus remportent la partie."
           : "Les rouges remportent la partie.") +
-      (data.result.reason === "resign" ? " Victoire par abandon." : "")
+      (data.result.reason === "resign" ? " Victoire par abandon." : data.result.reason === "disconnect" ? " Victoire après déconnexion." : "")
     : data.cancelled
       ? "Duel annulé : le premier pion n’a pas été placé à temps. Aucun changement d’Elo."
       : "";
+  const opponentSeenAt = data.presence
+    ? data.player === 1 ? data.presence.redLastSeenAt : data.presence.blueLastSeenAt
+    : null;
+  const serverNow = now - offset;
+  const disconnectDeadline = opponentSeenAt !== null && data.presence
+    ? opponentSeenAt + data.presence.heartbeatTimeoutMs + data.presence.disconnectGraceMs
+    : null;
+  const opponentDisconnected = !!data.startedAt && !ended && disconnectDeadline !== null &&
+    serverNow >= opponentSeenAt! + data.presence!.heartbeatTimeoutMs && serverNow < disconnectDeadline;
+  const graceRemaining = disconnectDeadline === null ? 0 : Math.max(0, Math.ceil((disconnectDeadline - serverNow) / 1000));
   return (
     <OnlineShell>
       <div className="page-heading">
@@ -272,7 +282,7 @@ function Room({ id }: { id: string }) {
             </h2>
             <p className="sync-note">
               {query.isError || query.fetchStatus === "paused"
-                ? data.startedAt === null ? "Connexion interrompue — en attente du départ." : "Connexion interrompue — le temps continue."
+                ? data.startedAt === null ? "Connexion interrompue — en attente du départ." : "Connexion interrompue — le délai de retour continue."
                 : "Synchronisation avec le serveur"}{" "}
               <button aria-label="Actualiser la partie" onClick={() => void query.refetch()}>
                 <RefreshCw size={14} />
@@ -358,11 +368,16 @@ function Room({ id }: { id: string }) {
                 Rechercher un autre adversaire
               </Link>
             )}
+            {opponentDisconnected && (
+              <div className="ready-deadline" role="status">
+                <strong>Adversaire déconnecté</strong>
+                <p>Il lui reste {graceRemaining} s pour revenir. Sinon, il perdra la partie.</p>
+              </div>
+            )}
             {data.startedAt && !ended && (
               <>
                 <p>
-                  Pas de pause ni d’annulation en ligne. Une déconnexion ne suspend pas le compte à
-                  rebours.
+                  Une déconnexion déclenche une minute de grâce après 10 secondes sans signal de présence.
                 </p>
                 {confirm ? (
                   <div className="resign-confirm">
