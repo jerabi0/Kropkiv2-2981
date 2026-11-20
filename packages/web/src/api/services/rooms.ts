@@ -55,10 +55,9 @@ export async function saveRoom(tx: Tx, row: RoomRow, next: OnlineGame) {
   if (!saved) throw new ORPCError("CONFLICT", { message: "La partie a changé. Actualise-la." });
   return { row: saved, state };
 }
-export async function loadRoom(tx: Tx, id: string) {
+export async function loadRoom(tx: Tx, id: string, now = Date.now()) {
   const [initial] = await tx.select().from(rooms).where(eq(rooms.id, id));
   if (!initial) throw new ORPCError("NOT_FOUND", { message: "Invitation introuvable." });
-  const now = Date.now();
   let row = initial;
   const baseline = {
     ...(row.blueSeenAt === 0 ? { blueSeenAt: now } : {}),
