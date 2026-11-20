@@ -138,7 +138,7 @@ test("données anciennes ou malformées : migration sûre", () => {
     expect(m.snapshots).toHaveLength(g.moves.length + 1);
   }
 });
-test("plateau plein : résultat au score et horloge figée", () => {
+test("aucune intersection jouable : résultat au score et horloge figée", () => {
   const g = createGame(2, 2);
   g.board = [1, 2, 1, 0];
   g.turn = 2;

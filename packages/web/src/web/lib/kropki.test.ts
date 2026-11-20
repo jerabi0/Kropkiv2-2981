@@ -6,6 +6,26 @@ test("alternance et intersection occupée", () => {
   expect(play(g, 4, 4)).toBe(g);
   expect(g.moves.length).toBe(1);
 });
+test("legal refuse les coordonnées non entières, non finies et hors plateau", () => {
+  const g = createGame(7, 7);
+  for (const [x, y] of [
+    [1.5, 2],
+    [2, 1.5],
+    [-1, 0],
+    [0, -1],
+    [7, 0],
+    [0, 7],
+    [NaN, 0],
+    [0, NaN],
+    [Infinity, 0],
+    [0, Infinity],
+    [-Infinity, 0],
+    [0, -Infinity],
+  ]) {
+    expect(legal(g, x, y)).toBe(false);
+    expect(play(g, x, y)).toBe(g);
+  }
+});
 test("capture diagonale et territoire fermé", () => {
   const g = createGame(7, 7);
   g.board[3 * 7 + 3] = 2;

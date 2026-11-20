@@ -19,7 +19,7 @@ Une sélection n'est pas une sauvegarde de partie : recharger la page l'efface. 
 Les quatre étapes du tutoriel enseignent sélection, aperçu et confirmation, dont une vraie capture +1. Partie personnelle isolée et chrono local en pause pendant le tutoriel. Les six exercices et leur progression existante sont conservés, sans nouvelle campagne fictive.
 
 ## Vérifications
-- Lint et compilation réussis ; 80 tests unitaires / 936 assertions, zéro échec.
+- Dernier run CI vérifié avant cette PR (20 novembre 2026, run #12) : 92 tests / 1036 appels `expect()`, zéro échec ; lint sans avertissement ni erreur ; typecheck réussi.
 - Scénario navigateur dédié : sélection sans placement, annulation, premier pion/chrono, aperçu +1/frontière réelle, confirmation/capture, placement direct/rechargement, disparition d'une sélection au reload, tutoriel complet et six largeurs.
 - Vérifications clavier (Entrée) et invalidation d'une sélection à expiration réussies.
 - Régressions local, chrono, entraînement, habillage, privé et classé exécutées avec adaptateur de confirmation pour les anciens scripts. Captures, relecture, déconnexion/reconnexion, statistiques/Elo des deux comptes et responsive réussis.

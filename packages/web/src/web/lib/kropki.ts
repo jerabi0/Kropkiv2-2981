@@ -35,6 +35,8 @@ export function scores(g: Game) {
 export function legal(g: Game, x: number, y: number) {
   return (
     !g.ended &&
+    Number.isInteger(x) &&
+    Number.isInteger(y) &&
     x >= 0 &&
     x < g.w &&
     y >= 0 &&
