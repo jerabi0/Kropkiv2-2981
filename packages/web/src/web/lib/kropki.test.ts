@@ -125,6 +125,33 @@ test("Tactique bloque une capture adverse imminente", () => {
     g.board[y * 7 + x] = 2;
   expect(computerMove(g, "normal", () => 0)).toEqual([2, 3]);
 });
+test("Tactique préfère bloquer une capture ailleurs plutôt que prendre un gain exposé", () => {
+  const g = createGame(11, 7);
+  g.turn = 1;
+
+  // P can capture the opponent's centre at (3, 3) with (2, 3).
+  g.board[3 * 11 + 3] = 2;
+  g.board[2 * 11 + 3] = 1;
+  g.board[3 * 11 + 4] = 1;
+  g.board[4 * 11 + 3] = 1;
+
+  // But that capture lets Q close a different loop at (6, 3),
+  // taking P's centre at (7, 3). Playing (6, 3) now blocks it.
+  g.board[3 * 11 + 7] = 1;
+  g.board[2 * 11 + 7] = 2;
+  g.board[3 * 11 + 8] = 2;
+  g.board[4 * 11 + 7] = 2;
+
+  expect(computerMove(g, "normal", () => 0)).toEqual([6, 3]);
+});
+
+test("Tactique renvoie un coup légal avec un budget de simulation nul", () => {
+  const g = createGame(21, 17);
+  const move = computerMove(g, "normal", () => 0, 0);
+  expect(move).not.toBeNull();
+  expect(legal(g, ...move!)).toBe(true);
+});
+
 test("le générateur aléatoire injectable rend Découverte reproductible", () => {
   const g = createGame(7, 7);
   const rng = () => 0.25;
@@ -158,8 +185,35 @@ test("Tactique obtient un meilleur score cumulé que Découverte sur 20 parties"
     discoveryScore += result[tacticalPlayer === 1 ? 2 : 1];
   }
 
+  console.log(
+    `[IA - 20 parties] Tactique: ${tacticalScore} points | Découverte: ${discoveryScore} points`,
+  );
   expect(tacticalScore).toBeGreaterThan(discoveryScore);
 });
+test("benchmark IA sur plateau 21x17 en milieu de partie", () => {
+  const g = createGame(21, 17);
+  let seed = 20261120;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 0x100000000;
+  };
+  for (let i = 0; i < g.board.length; i++) {
+    if (random() < 0.42) g.board[i] = random() < 0.5 ? 1 : 2;
+  }
+  g.turn = 1;
+  const occupied = g.board.filter(Boolean).length;
+  const started = performance.now();
+  const move = computerMove(g, "normal", () => 0);
+  const elapsed = performance.now() - started;
+
+  expect(occupied).toBeGreaterThan(100);
+  expect(move).not.toBeNull();
+  expect(legal(g, ...move!)).toBe(true);
+  console.log(
+    `[BENCHMARK 21x17] ${elapsed.toFixed(2)} ms | ${occupied} pions | budget 600 simulations`,
+  );
+});
+
 test("simulation complète ordinateur sans coup illégal", () => {
   let g = createGame(13, 11);
   for (let i = 0; i < 90 && !g.ended; i++) {
