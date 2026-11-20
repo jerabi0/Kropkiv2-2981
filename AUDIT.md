@@ -1,4 +1,4 @@
-# Audit fonctionnel — finalisé le 19 novembre 2026
+# Audit fonctionnel — finalisé le 19 novembre 2026, complément e-mail le 20 novembre 2026
 
 ## Corrections
 - URL inconnue : page explicite avec liens de retour, au lieu d'un écran vide.
