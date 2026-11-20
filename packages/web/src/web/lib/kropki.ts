@@ -201,6 +201,7 @@ function heuristicValue(
   level: string,
   rng: () => number,
   before: number[],
+  occupied: number[],
 ) {
   const x = index % g.w;
   const y = Math.floor(index / g.w);
@@ -216,7 +217,7 @@ function heuristicValue(
     value += (threatScores[q] - before[q]) * 85;
   }
 
-  value += cheapCandidateValue(g, index, g.board.map((v, i) => (v ? i : -1)).filter((i) => i >= 0));
+  value += cheapCandidateValue(g, index, occupied);
   value += rng() * (level === "easy" ? 12 : 1.8);
   return value;
 }
@@ -248,7 +249,7 @@ export function computerMove(
     if (classificationSimulations + simulationsPerCandidate > classificationBudget) break;
     ranked.push({
       index: candidate.index,
-      value: heuristicValue(g, candidate.index, level, rng, before),
+      value: heuristicValue(g, candidate.index, level, rng, before, occupied),
     });
     classificationSimulations += simulationsPerCandidate;
   }
