@@ -199,38 +199,32 @@ test("Tactique trouve une capture sur un 21x17 dense même si le score bon march
 });
 
 test("Tactique évite un gain immédiat qui ferait perdre deux points au tour adverse", () => {
-  const g = createGame(12, 9);
+  const g = createGame(13, 9);
   g.turn = 1;
 
   // Tempting blue capture at (2, 3): it takes one red point.
   g.board[3 * g.w + 3] = 2;
   for (const [x, y] of [
     [3, 2],
-    [4, 2],
-    [5, 3],
-    [4, 4],
+    [4, 3],
     [3, 4],
   ])
     g.board[y * g.w + x] = 1;
 
-  // Red has a nearly closed rectangle. Playing (5, 4) would capture
-  // the two blue points inside it; blue can safely occupy that gap first.
+  // Red has a nearly closed diamond. Playing (5, 4) closes it and
+  // captures both blue points inside; blue can occupy the gap first.
   for (const [x, y] of [
-    [6, 2],
     [7, 2],
-    [8, 2],
-    [9, 3],
+    [6, 3],
+    [8, 3],
     [9, 4],
-    [9, 5],
-    [8, 6],
+    [8, 5],
+    [6, 5],
     [7, 6],
-    [6, 6],
-    [5, 3],
-    [5, 5],
   ])
     g.board[y * g.w + x] = 2;
-  g.board[6 * g.w + 6] = 1;
-  g.board[7 * g.w + 7] = 1;
+  g.board[4 * g.w + 7] = 1;
+  g.board[5 * g.w + 7] = 1;
 
   const before = scores(g);
   const tempting = play(g, 2, 3);
