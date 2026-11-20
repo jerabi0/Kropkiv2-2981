@@ -10,8 +10,14 @@ export default function SignIn() {
     [busy, setBusy] = useState(false),
     [forgot, setForgot] = useState(false),
     [resetToken, setResetToken] = useState(searchParams.get("token")),
+    [verificationError] = useState(
+      ["INVALID_TOKEN", "invalid_token", "TOKEN_EXPIRED", "token_expired"].includes(
+        searchParams.get("error") ?? "",
+      ) && searchParams.get("verified") === "1",
+    ),
+    [verificationResult] = useState(searchParams.get("verified") === "1"),
     [resetInvalid, setResetInvalid] = useState(
-      searchParams.get("error") === "INVALID_TOKEN",
+      searchParams.get("error") === "INVALID_TOKEN" && searchParams.get("verified") !== "1",
     ),
     [resetDone, setResetDone] = useState(false),
     [notice, setNotice] = useState(
@@ -22,14 +28,14 @@ export default function SignIn() {
     [error, setError] = useState(
       searchParams.has("authErreur")
         ? "La connexion Google n’a pas abouti. Réessaie ou utilise ton e-mail."
-        : searchParams.get("error") === "INVALID_TOKEN"
-          ? "Ce lien de réinitialisation est invalide ou a expiré. Demande un nouveau lien."
+        : searchParams.get("error") === "INVALID_TOKEN" && searchParams.get("verified") !== "1"
+          ? "Ce lien est invalide ou a expiré."
           : "",
     );
   const { data } = authClient.useSession();
   const target = new URLSearchParams(window.location.search).get("retour") ?? "/en-ligne";
   const safe = target.startsWith("/") && !target.startsWith("//") ? target : "/en-ligne";
-  if (data && !resetToken && !resetInvalid && !resetDone && searchParams.get("verified") !== "1")
+  if (data && !resetToken && !resetInvalid && !resetDone && !verificationResult)
     return <Redirect to={safe} />;
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -163,13 +169,35 @@ export default function SignIn() {
           </a>
         </div>
         <section className="auth-card">
-          {resetToken || resetInvalid || resetDone ? (
+          {verificationResult ? (
+            <div className="auth-reset">
+              <h2>{verificationError ? "Adresse non confirmée." : "Adresse confirmée."}</h2>
+              <p>
+                {verificationError
+                  ? "Ce lien est invalide ou a expiré. Demande un nouvel e-mail de confirmation."
+                  : data
+                    ? "Ton adresse e-mail est confirmée. Tu peux accéder à tes parties."
+                    : "Ton adresse e-mail est confirmée. Tu peux maintenant te connecter."}
+              </p>
+              {data ? (
+                <a className="primary-button" href="/en-ligne">
+                  Accéder à Kropki <ArrowRight size={17} />
+                </a>
+              ) : (
+                <a className="primary-button" href="/connexion">
+                  Aller à la connexion <ArrowRight size={17} />
+                </a>
+              )}
+            </div>
+          ) : resetToken || resetInvalid || resetDone ? (
             <div className="auth-reset">
               <h2>{resetDone ? "Mot de passe modifié." : "Nouveau mot de passe"}</h2>
-              {resetDone ? null : resetInvalid ? (
-                <p className="online-error" role="alert">
-                  Ce lien est invalide ou a expiré. Demande un nouveau lien de réinitialisation.
-                </p>
+              {resetDone ? (
+                <p>Tu peux maintenant te connecter avec ton nouveau mot de passe.</p>
+              ) : resetInvalid ? (
+                <output className="online-error" aria-live="polite">
+                  Ce lien est invalide ou a expiré.
+                </output>
               ) : (
                 <form onSubmit={resetPassword}>
                   <label htmlFor="new-password">Nouveau mot de passe</label>
