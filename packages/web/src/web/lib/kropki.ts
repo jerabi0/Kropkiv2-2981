@@ -141,7 +141,7 @@ export function replay(moves: Move[], w: number, h: number) {
   return g;
 }
 
-type RankedMove = { index: number; value: number };
+type RankedMove = { index: number; value: number; after: Game };
 
 function candidateIndices(g: Game) {
   const candidates: number[] = [];
@@ -195,38 +195,34 @@ function cheapCandidateValue(g: Game, index: number, occupied: number[]) {
   );
 }
 
-function heuristicValue(
+function onePlyValue(
   g: Game,
   index: number,
-  level: string,
-  rng: () => number,
+  after: Game,
   before: number[],
   occupied: number[],
+  rng: () => number,
+  level: string,
 ) {
-  const x = index % g.w;
-  const y = Math.floor(index / g.w);
   const p = g.turn;
   const q = other(p);
-  const next = play(g, x, y);
-  const nextScores = scores(next);
-  let value = (nextScores[p] - before[p]) * 100 - (nextScores[q] - before[q]) * 110;
-
-  if (level !== "easy") {
-    const threat = play({ ...g, turn: q }, x, y);
-    const threatScores = scores(threat);
-    value += (threatScores[q] - before[q]) * 85;
-  }
-
-  value += cheapCandidateValue(g, index, occupied);
-  value += rng() * (level === "easy" ? 12 : 1.8);
-  return value;
+  const afterScores = scores(after);
+  return (
+    (afterScores[p] - before[p]) * 100 -
+    (afterScores[q] - before[q]) * 110 +
+    cheapCandidateValue(g, index, occupied) +
+    rng() * (level === "easy" ? 12 : 1.8)
+  );
 }
+
+type SimulationKind = "candidate" | "threat" | "reply";
 
 export function computerMove(
   g: Game,
   level = "normal",
   rng: () => number = Math.random,
   simulationBudget = 600,
+  onSimulation?: (kind: SimulationKind) => void,
 ): [number, number] | null {
   const { candidates, occupied } = candidateIndices(g);
   if (!candidates.length) return null;
@@ -236,67 +232,81 @@ export function computerMove(
     .sort((a, b) => b.value - a.value || a.index - b.index);
 
   const budget = Math.max(0, Math.floor(simulationBudget));
-  const classificationBudget = level === "easy" ? budget : Math.floor(budget / 2);
-  const replyBudget = level === "easy" ? 0 : budget - classificationBudget;
-  const before = scores(g);
-  const ranked: RankedMove[] = [];
-  let classificationSimulations = 0;
-  const simulationsPerCandidate = level === "easy" ? 1 : 2;
-
-  // Cheaply rank the whole board first, then spend the expensive budget on the
-  // most promising positions instead of scanning from the top-left corner.
-  for (const candidate of cheapRanked) {
-    if (classificationSimulations + simulationsPerCandidate > classificationBudget) break;
-    ranked.push({
-      index: candidate.index,
-      value: heuristicValue(g, candidate.index, level, rng, before, occupied),
-    });
-    classificationSimulations += simulationsPerCandidate;
-  }
-
-  // Even a zero budget must produce a legal move whenever one exists.
-  if (!ranked.length) {
+  // A zero budget still has a deterministic legal fallback. For a positive
+  // budget, the exhaustive first pass is the minimum safety cost: one own
+  // move is simulated for every legal candidate before any cheap-score filter.
+  if (budget === 0) {
     const fallback = cheapRanked[0].index;
     return [fallback % g.w, Math.floor(fallback / g.w)];
   }
 
+  const before = scores(g);
+  const ranked: RankedMove[] = [];
+  for (const candidate of cheapRanked) {
+    const x = candidate.index % g.w;
+    const y = Math.floor(candidate.index / g.w);
+    const after = play(g, x, y);
+    onSimulation?.("candidate");
+    ranked.push({
+      index: candidate.index,
+      value: onePlyValue(g, candidate.index, after, before, occupied, rng, level),
+      after,
+    });
+  }
+
   ranked.sort((a, b) => b.value - a.value || a.index - b.index);
 
-  // Découverte keeps the original one-ply heuristic and its wider random margin.
+  // Découverte keeps its one-ply behaviour, but the first pass now checks
+  // every legal candidate instead of truncating the board scan.
   if (level === "easy") {
     const choice = ranked[0].index;
     return [choice % g.w, Math.floor(choice / g.w)];
   }
 
-  // Tactique examines the eight strongest first moves. Each receives an equal
-  // reply-simulation allowance, making the search deterministic across devices.
-  const shortlist = ranked.slice(0, 8);
+  // Tactique first protects immediate captures across the whole candidate set.
+  // Deeper analysis is then limited to plans whose complete reply scan fits
+  // the remaining deterministic simulation budget.
+  const remainingBudget = Math.max(0, budget - candidates.length);
+  const plans = ranked.slice(0, 8).map((candidate) => {
+    const { candidates: replies, occupied: replyOccupied } = candidateIndices(candidate.after);
+    return {
+      candidate,
+      replies: replies
+        .map((index) => ({
+          index,
+          value: cheapCandidateValue(candidate.after, index, replyOccupied),
+        }))
+        .sort((a, b) => b.value - a.value || a.index - b.index),
+      replyOccupied,
+    };
+  });
+
+  let usedDeepBudget = 0;
+  let best: RankedMove | null = null;
   const p = g.turn;
   const q = other(p);
-  // Replaying each shortlisted first move also consumes one simulation.
-  const perCandidateReplyBudget =
-    shortlist.length > 0
-      ? Math.max(0, Math.floor(replyBudget / shortlist.length) - 1)
-      : 0;
-  let best: RankedMove | null = null;
 
-  for (const candidate of shortlist) {
-    const x = candidate.index % g.w;
-    const y = Math.floor(candidate.index / g.w);
-    const after = play(g, x, y);
-    const afterScores = scores(after);
-    const { candidates: replies, occupied: replyOccupied } = candidateIndices(after);
-    const replyRanked = replies
-      .map((index) => ({
-        index,
-        value: cheapCandidateValue(after, index, replyOccupied),
-      }))
-      .sort((a, b) => b.value - a.value || a.index - b.index);
+  for (const plan of plans) {
+    // One same-cell threat simulation plus every legal reply simulation.
+    const planCost = 1 + plan.replies.length;
+    if (usedDeepBudget + planCost > remainingBudget) continue;
 
+    const x = plan.candidate.index % g.w;
+    const y = Math.floor(plan.candidate.index / g.w);
+    const threat = play({ ...g, turn: q }, x, y);
+    onSimulation?.("threat");
+    const threatScores = scores(threat);
+    const threatValue = (threatScores[q] - before[q]) * 85;
+
+    const afterScores = scores(plan.candidate.after);
     let strongestReply = 0;
-    const repliesToCheck = replyRanked.slice(0, perCandidateReplyBudget);
-    for (const reply of repliesToCheck) {
-      const replyGame = play(after, reply.index % g.w, Math.floor(reply.index / g.w));
+    for (const reply of plan.replies) {
+      const replyGame = play(
+        plan.candidate.after,
+        reply.index % g.w,
+        Math.floor(reply.index / g.w),
+      );
+      onSimulation?.("reply");
       const replyScores = scores(replyGame);
       const replyValue =
         (replyScores[q] - afterScores[q]) * 100 -
@@ -304,8 +314,10 @@ export function computerMove(
       if (replyValue > strongestReply) strongestReply = replyValue;
     }
 
-    const value = candidate.value - strongestReply;
-    if (!best || value > best.value) best = { index: candidate.index, value };
+    usedDeepBudget += planCost;
+    const value = plan.candidate.value + threatValue - strongestReply;
+    if (!best || value > best.value)
+      best = { ...plan.candidate, value };
   }
 
   const choice = (best ?? ranked[0]).index;
