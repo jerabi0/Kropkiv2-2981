@@ -298,24 +298,27 @@ test("benchmark IA sur plateau 21x17 en milieu de partie", () => {
   computerMove(g, "normal", () => 0);
   const samples: number[] = [];
   const simulationCounts: number[] = [];
+  const simulationBreakdowns: Array<{ candidate: number; threat: number; reply: number }> = [];
   let move: [number, number] | null = null;
   for (let run = 0; run < 5; run++) {
-    let simulations = 0;
+    const counts = { candidate: 0, threat: 0, reply: 0 };
     const started = performance.now();
-    move = computerMove(g, "normal", () => 0, 600, () => simulations++);
+    move = computerMove(g, "normal", () => 0, 600, (kind) => counts[kind]++);
     samples.push(performance.now() - started);
-    simulationCounts.push(simulations);
+    simulationCounts.push(counts.candidate + counts.threat + counts.reply);
+    simulationBreakdowns.push(counts);
   }
   const sorted = [...samples].sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length / 2)];
   const sortedSimulationCounts = [...simulationCounts].sort((a, b) => a - b);
   const medianSimulations = sortedSimulationCounts[Math.floor(sortedSimulationCounts.length / 2)];
+  const medianBreakdown = simulationBreakdowns[Math.floor(simulationBreakdowns.length / 2)];
 
   expect(occupied).toBeGreaterThan(100);
   expect(move).not.toBeNull();
   expect(legal(g, ...move!)).toBe(true);
   console.log(
-    `[BENCHMARK 21x17] médiane ${median.toFixed(2)} ms | min ${sorted[0].toFixed(2)} ms | max ${sorted[sorted.length - 1].toFixed(2)} ms | ${occupied} pions | simulations médianes ${medianSimulations} (mesures: ${simulationCounts.join(", ")}) | budget 600`,
+    `[BENCHMARK 21x17] médiane ${median.toFixed(2)} ms | min ${sorted[0].toFixed(2)} ms | max ${sorted[sorted.length - 1].toFixed(2)} ms | ${occupied} pions | simulations médianes ${medianSimulations} (candidats ${medianBreakdown.candidate}, menaces ${medianBreakdown.threat}, réponses ${medianBreakdown.reply}) | budget 600`,
   );
 });
 
