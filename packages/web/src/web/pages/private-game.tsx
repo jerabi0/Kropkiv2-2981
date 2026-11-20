@@ -234,7 +234,6 @@ function Room({ id }: { id: string }) {
           {ended && review === null && (
             <section
               className={"match-finale " + (data.cancelled ? "match-finale-cancelled" : data.result?.winner === null ? "match-finale-draw" : data.result?.winner === data.player ? "match-finale-win" : "match-finale-loss")}
-              role="status"
               aria-live="polite"
             >
               <span className="match-finale-icon"><Trophy size={25} /></span>
