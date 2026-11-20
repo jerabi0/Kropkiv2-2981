@@ -473,7 +473,6 @@ export default function GamePage() {
                   {game.ended && review === null && (
                     <section
                       className={"match-finale " + (winningPlayer === null ? "match-finale-draw" : winningPlayer === 1 ? "match-finale-win" : "match-finale-loss")}
-                      role="status"
                       aria-live="polite"
                     >
                       <span className="match-finale-icon"><Trophy size={25} /></span>
