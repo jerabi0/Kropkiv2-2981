@@ -140,67 +140,135 @@ export function replay(moves: Move[], w: number, h: number) {
   for (const m of moves) g = play(g, m.x, m.y);
   return g;
 }
-export function computerMove(g: Game, level = "normal"): [number, number] | null {
+
+type RankedMove = { index: number; value: number };
+
+function candidateIndices(g: Game) {
   const candidates: number[] = [];
   const occupied = g.board.map((v, i) => (v ? i : -1)).filter((i) => i >= 0);
-  for (let i = 0; i < g.board.length; i++)
+  for (let i = 0; i < g.board.length; i++) {
+    const x = i % g.w;
+    const y = Math.floor(i / g.w);
     if (
-      legal(g, i % g.w, Math.floor(i / g.w)) &&
+      legal(g, x, y) &&
       (!occupied.length ||
         occupied.some(
           (j) =>
             Math.max(
-              Math.abs((j % g.w) - (i % g.w)),
-              Math.abs(Math.floor(j / g.w) - Math.floor(i / g.w)),
+              Math.abs((j % g.w) - x),
+              Math.abs(Math.floor(j / g.w) - y),
             ) <= 2,
         ))
     )
       candidates.push(i);
+  }
   if (!candidates.length)
     for (let i = 0; i < g.board.length; i++)
       if (legal(g, i % g.w, Math.floor(i / g.w))) candidates.push(i);
-  if (!candidates.length) return null;
-  const p = g.turn,
-    q = other(p),
-    before = scores(g);
-  let best = -Infinity,
-    choice = candidates[0];
-  for (const i of candidates) {
-    const x = i % g.w,
-      y = Math.floor(i / g.w),
-      n = play(g, x, y),
-      s = scores(n);
-    let value = (s[p] - before[p]) * 100 - (s[q] - before[q]) * 110;
-    if (level !== "easy") {
-      const threat = play({ ...g, turn: q }, x, y),
-        ts = scores(threat);
-      value += (ts[q] - before[q]) * 85;
-    }
-    let own = 0,
-      enemy = 0,
-      near = 0;
-    for (const j of occupied) {
-      if (captured(g, j)) continue;
-      const dx = Math.abs((j % g.w) - x),
-        dy = Math.abs(Math.floor(j / g.w) - y),
-        d = Math.max(dx, dy);
-      if (d === 1) {
-        if (g.board[j] === p) own++;
-        else enemy++;
-      }
-      if (d === 2 && g.board[j] === p) near++;
-    }
-    value +=
-      own * 2.5 +
-      enemy * 3 +
-      near * 0.3 -
-      (own > 4 ? 10 : 0) -
-      Math.hypot(x - g.w / 2, y - g.h / 2) * 0.12;
-    value += Math.random() * (level === "easy" ? 12 : 1.8);
-    if (value > best) {
-      best = value;
-      choice = i;
-    }
+  return { candidates, occupied };
+}
+
+function heuristicValue(
+  g: Game,
+  index: number,
+  level: string,
+  rng: () => number,
+  occupied: number[],
+) {
+  const x = index % g.w;
+  const y = Math.floor(index / g.w);
+  const p = g.turn;
+  const q = other(p);
+  const before = scores(g);
+  const next = play(g, x, y);
+  const nextScores = scores(next);
+  let value = (nextScores[p] - before[p]) * 100 - (nextScores[q] - before[q]) * 110;
+
+  if (level !== "easy") {
+    const threat = play({ ...g, turn: q }, x, y);
+    const threatScores = scores(threat);
+    value += (threatScores[q] - before[q]) * 85;
   }
+
+  let own = 0;
+  let enemy = 0;
+  let near = 0;
+  for (const j of occupied) {
+    if (captured(g, j)) continue;
+    const dx = Math.abs((j % g.w) - x);
+    const dy = Math.abs(Math.floor(j / g.w) - y);
+    const distance = Math.max(dx, dy);
+    if (distance === 1) {
+      if (g.board[j] === p) own++;
+      else enemy++;
+    }
+    if (distance === 2 && g.board[j] === p) near++;
+  }
+  value +=
+    own * 2.5 +
+    enemy * 3 +
+    near * 0.3 -
+    (own > 4 ? 10 : 0) -
+    Math.hypot(x - g.w / 2, y - g.h / 2) * 0.12;
+  value += rng() * (level === "easy" ? 12 : 1.8);
+  return value;
+}
+
+export function computerMove(
+  g: Game,
+  level = "normal",
+  rng: () => number = Math.random,
+): [number, number] | null {
+  const { candidates, occupied } = candidateIndices(g);
+  if (!candidates.length) return null;
+
+  const ranked: RankedMove[] = candidates.map((index) => ({
+    index,
+    value: heuristicValue(g, index, level, rng, occupied),
+  }));
+  ranked.sort((a, b) => b.value - a.value);
+
+  // Découverte keeps the original one-ply heuristic and its wider random margin.
+  if (level === "easy") {
+    const choice = ranked[0].index;
+    return [choice % g.w, Math.floor(choice / g.w)];
+  }
+
+  // Tactique searches replies only for the ten strongest first moves.
+  const shortlist = ranked.slice(0, 8);
+  const p = g.turn;
+  const q = other(p);
+  const before = scores(g);
+  const deadline = Date.now() + 300;
+  let best: RankedMove | null = null;
+
+  for (const candidate of shortlist) {
+    const x = candidate.index % g.w;
+    const y = Math.floor(candidate.index / g.w);
+    const after = play(g, x, y);
+    const afterScores = scores(after);
+    const { candidates: replies } = candidateIndices(after);
+    let strongestReply = 0;
+    let completed = true;
+
+    for (const reply of replies) {
+      if (Date.now() >= deadline) {
+        completed = false;
+        break;
+      }
+      const replyGame = play(after, reply % g.w, Math.floor(reply / g.w));
+      const replyScores = scores(replyGame);
+      const replyValue =
+        (replyScores[q] - afterScores[q]) * 100 -
+        (replyScores[p] - afterScores[p]) * 110;
+      if (replyValue > strongestReply) strongestReply = replyValue;
+    }
+
+    if (!completed) break;
+    const value = candidate.value - strongestReply;
+    if (!best || value > best.value) best = { index: candidate.index, value };
+  }
+
+  const choice = (best ?? ranked[0]).index;
   return [choice % g.w, Math.floor(choice / g.w)];
 }
