@@ -222,10 +222,15 @@ export function computerMove(
   const { candidates, occupied } = candidateIndices(g);
   if (!candidates.length) return null;
 
-  const ranked: RankedMove[] = candidates.map((index) => ({
-    index,
-    value: heuristicValue(g, index, level, rng, occupied),
-  }));
+  const deadline = Date.now() + 300;
+  const ranked: RankedMove[] = [];
+  for (const index of candidates) {
+    if (level !== "easy" && ranked.length > 0 && Date.now() >= deadline) break;
+    ranked.push({
+      index,
+      value: heuristicValue(g, index, level, rng, occupied),
+    });
+  }
   ranked.sort((a, b) => b.value - a.value);
 
   // Découverte keeps the original one-ply heuristic and its wider random margin.
@@ -238,8 +243,6 @@ export function computerMove(
   const shortlist = ranked.slice(0, 8);
   const p = g.turn;
   const q = other(p);
-  const before = scores(g);
-  const deadline = Date.now() + 300;
   let best: RankedMove | null = null;
 
   for (const candidate of shortlist) {
