@@ -198,6 +198,58 @@ test("Tactique trouve une capture sur un 21x17 dense même si le score bon march
   expect(computerMove(g, "normal", () => 0)).toEqual([2, 3]);
 });
 
+test("Tactique conserve les captures sur 21x17 avec plus de 300 candidats", () => {
+  const g = createGame(21, 17);
+  g.turn = 1;
+
+  // Dispersed points cover the board's candidate radius while leaving
+  // more than 300 legal candidate cells. Keep the capture pattern area open.
+  const xs = [0, 3, 6, 9, 12, 15, 18, 20];
+  const ys = [0, 3, 6, 9, 12, 15, 16];
+  let filler = 0;
+  for (const y of ys)
+    for (const x of xs) {
+      if (Math.abs(x - 4) <= 3 && Math.abs(y - 3) <= 3) continue;
+      g.board[y * g.w + x] = filler++ % 2 === 0 ? 1 : 2;
+    }
+
+  // Immediate capture at (2, 3), enclosing the red point at (3, 3).
+  for (const [x, y] of [
+    [3, 2],
+    [4, 2],
+    [5, 3],
+    [4, 4],
+    [3, 4],
+  ])
+    g.board[y * g.w + x] = 1;
+  g.board[3 * g.w + 3] = 2;
+
+  const occupied = g.board.map((value, i) => value ? i : -1).filter((i) => i >= 0);
+  const candidates = g.board.filter((value, i) =>
+    !value && !g.territory[i] && occupied.some((j) =>
+      Math.max(
+        Math.abs((j % g.w) - (i % g.w)),
+        Math.abs(Math.floor(j / g.w) - Math.floor(i / g.w)),
+      ) <= 2,
+    ),
+  );
+  expect(candidates.length).toBeGreaterThan(300);
+
+  const before = scores(g);
+  const after = play(g, 2, 3);
+  expect(scores(after)[1] - before[1]).toBe(1);
+
+  let candidateSimulations = 0;
+  let threatSimulations = 0;
+  const move = computerMove(g, "normal", () => 0, 600, (kind) => {
+    if (kind === "candidate") candidateSimulations++;
+    if (kind === "threat") threatSimulations++;
+  });
+  expect(candidateSimulations).toBe(candidates.length);
+  expect(threatSimulations).toBe(candidates.length);
+  expect(move).toEqual([2, 3]);
+});
+
 test("Tactique bloque sur un 21x17 dense même si le blocage est hors du top 8 bon marché", () => {
   const g = createGame(21, 17);
   g.turn = 1;
