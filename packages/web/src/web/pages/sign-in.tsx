@@ -174,7 +174,7 @@ export default function SignIn() {
               <h2>{verificationError ? "Adresse non confirmée." : "Adresse confirmée."}</h2>
               <p>
                 {verificationError
-                  ? "Ce lien est invalide ou a expiré. Demande un nouvel e-mail de confirmation."
+                  ? "Ce lien de confirmation est invalide ou a expiré. Retourne à la connexion."
                   : data
                     ? "Ton adresse e-mail est confirmée. Tu peux accéder à tes parties."
                     : "Ton adresse e-mail est confirmée. Tu peux maintenant te connecter."}
