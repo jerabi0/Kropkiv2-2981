@@ -5061,3 +5061,43 @@ dialog::backdrop {
 @media (prefers-reduced-motion: reduce) {
   .score-value-active { animation: none !important; }
 }
+
+
+/* Authentification : récupération et renouvellement du mot de passe */
+.auth-reset > p {
+  color: #617089;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0 0 18px;
+}
+.auth-reset form {
+  display: flex;
+  flex-direction: column;
+}
+.auth-reset .primary-button {
+  margin-top: 12px;
+}
+.auth-reset > a {
+  display: inline-block;
+  margin-top: 18px;
+  font-size: 12px;
+}
+.auth-card .text-button {
+  display: inline-flex;
+  width: auto;
+  min-height: 0;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: #255bfa;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.auth-card .online-notice {
+  display: block;
+  margin: 10px 0;
+  color: #18734b;
+  font-size: 11px;
+  line-height: 1.7;
+}
