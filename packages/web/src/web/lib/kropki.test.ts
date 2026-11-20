@@ -202,15 +202,23 @@ test("benchmark IA sur plateau 21x17 en milieu de partie", () => {
   }
   g.turn = 1;
   const occupied = g.board.filter(Boolean).length;
-  const started = performance.now();
-  const move = computerMove(g, "normal", () => 0);
-  const elapsed = performance.now() - started;
+  // Warm-up, then take five real measurements on the same deterministic position.
+  computerMove(g, "normal", () => 0);
+  const samples: number[] = [];
+  let move: [number, number] | null = null;
+  for (let run = 0; run < 5; run++) {
+    const started = performance.now();
+    move = computerMove(g, "normal", () => 0);
+    samples.push(performance.now() - started);
+  }
+  const sorted = [...samples].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
 
   expect(occupied).toBeGreaterThan(100);
   expect(move).not.toBeNull();
   expect(legal(g, ...move!)).toBe(true);
   console.log(
-    `[BENCHMARK 21x17] ${elapsed.toFixed(2)} ms | ${occupied} pions | budget 600 simulations`,
+    `[BENCHMARK 21x17] médiane ${median.toFixed(2)} ms | min ${sorted[0].toFixed(2)} ms | max ${sorted[sorted.length - 1].toFixed(2)} ms | ${occupied} pions | budget 600 simulations`,
   );
 });
 
