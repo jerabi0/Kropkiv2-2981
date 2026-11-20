@@ -30,10 +30,10 @@ describe("e-mails d’authentification", () => {
     process.env.RESEND_API_KEY = "test_key";
     process.env.EMAIL_FROM = "Kropki <test@example.com>";
     let request: Request | undefined;
-    globalThis.fetch = async (input, init) => {
+    globalThis.fetch = (async (input, init) => {
       request = new Request(input, init);
       return new Response(null, { status: 200 });
-    };
+    }) as unknown as typeof fetch;
 
     await sendPasswordResetEmail("joueur@example.com", "https://kropki.test/connexion?token=secret");
 
@@ -50,10 +50,10 @@ describe("e-mails d’authentification", () => {
     process.env.RESEND_API_KEY = "test_key";
     process.env.EMAIL_FROM = "Kropki <test@example.com>";
     let payload = "";
-    globalThis.fetch = async (_input, init) => {
+    globalThis.fetch = (async (_input, init) => {
       payload = String(init?.body ?? "");
       return new Response(null, { status: 200 });
-    };
+    }) as unknown as typeof fetch;
 
     await sendVerificationEmail("joueur@example.com", "https://kropki.test/verify?token=secret");
     expect(payload).toContain("Confirme ton adresse e-mail Kropki");
@@ -63,7 +63,7 @@ describe("e-mails d’authentification", () => {
   test("ne renvoie pas le lien ou le jeton dans l’erreur du fournisseur", async () => {
     process.env.RESEND_API_KEY = "test_key";
     process.env.EMAIL_FROM = "Kropki <test@example.com>";
-    globalThis.fetch = async () => new Response("secret token body", { status: 500 });
+    globalThis.fetch = (async () => new Response("secret token body", { status: 500 })) as unknown as typeof fetch;
 
     await expect(
       sendPasswordResetEmail("joueur@example.com", "https://kropki.test/?token=secret"),
