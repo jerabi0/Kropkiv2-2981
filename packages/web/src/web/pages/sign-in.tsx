@@ -5,17 +5,27 @@ import { authClient, GOOGLE_RETURN_KEY } from "../lib/auth";
 import { OnlineShell } from "../components/online-shell";
 import { writeStorage, removeStorage } from "../lib/browser-storage";
 export default function SignIn() {
+  const searchParams = new URLSearchParams(window.location.search);
   const [signup, setSignup] = useState(false),
     [busy, setBusy] = useState(false),
+    [forgot, setForgot] = useState(false),
+    [resetToken, setResetToken] = useState(searchParams.get("token")),
+    [resetInvalid, setResetInvalid] = useState(
+      ["INVALID_TOKEN", "invalid_token"].includes(searchParams.get("error") ?? ""),
+    ),
+    [resetDone, setResetDone] = useState(false),
+    [notice, setNotice] = useState(""),
     [error, setError] = useState(
-      new URLSearchParams(window.location.search).has("authErreur")
+      searchParams.has("authErreur")
         ? "La connexion Google n’a pas abouti. Réessaie ou utilise ton e-mail."
-        : "",
+        : searchParams.has("error")
+          ? "Ce lien de réinitialisation est invalide ou a expiré. Demande un nouveau lien."
+          : "",
     );
   const { data } = authClient.useSession();
   const target = new URLSearchParams(window.location.search).get("retour") ?? "/en-ligne";
   const safe = target.startsWith("/") && !target.startsWith("//") ? target : "/en-ligne";
-  if (data) return <Redirect to={safe} />;
+  if (data && !resetToken && !resetInvalid && !resetDone) return <Redirect to={safe} />;
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -39,6 +49,62 @@ export default function SignIn() {
       setBusy(false);
     }
   }
+  async function requestReset(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    setNotice("");
+    const form = new FormData(e.currentTarget);
+    const email = String(form.get("email")).trim();
+    try {
+      const result = await authClient.requestPasswordReset({
+        email,
+        redirectTo: `${window.location.origin}/connexion`,
+      });
+      if (result.error) {
+        setError("Impossible d’envoyer le lien. Vérifie la configuration e-mail ou réessaie plus tard.");
+      } else {
+        setNotice("Si un compte correspond à cette adresse, un lien de réinitialisation vient d’être envoyé. Il est valable une heure.");
+      }
+    } catch {
+      setError("Impossible d’envoyer le lien pour le moment. Réessaie plus tard.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resetPassword(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!resetToken) return;
+    setBusy(true);
+    setError("");
+    const form = new FormData(e.currentTarget);
+    const password = String(form.get("new-password"));
+    const confirmation = String(form.get("confirm-password"));
+    if (password !== confirmation) {
+      setError("Les deux mots de passe ne correspondent pas.");
+      setBusy(false);
+      return;
+    }
+    try {
+      const result = await authClient.resetPassword({ newPassword: password, token: resetToken });
+      if (result.error) {
+        setResetInvalid(true);
+        setResetToken(null);
+        setError("Ce lien de réinitialisation est invalide ou a expiré. Demande un nouveau lien.");
+      } else {
+        window.history.replaceState(null, "", "/connexion");
+        setResetToken(null);
+        setResetDone(true);
+        setNotice("Ton mot de passe a été modifié. Tu peux maintenant te connecter.");
+      }
+    } catch {
+      setError("Ce lien de réinitialisation est invalide ou a expiré. Demande un nouveau lien.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function google() {
     setBusy(true);
     setError("");
@@ -83,6 +149,67 @@ export default function SignIn() {
           </a>
         </div>
         <section className="auth-card">
+          {resetToken || resetInvalid || resetDone ? (
+            <div className="auth-reset">
+              <h2>{resetDone ? "Mot de passe modifié." : "Nouveau mot de passe"}</h2>
+              {resetDone ? (
+                <p>Ton mot de passe a été mis à jour.</p>
+              ) : resetInvalid ? (
+                <p className="online-error" role="alert">
+                  Ce lien est invalide ou a expiré. Demande un nouveau lien de réinitialisation.
+                </p>
+              ) : (
+                <form onSubmit={resetPassword}>
+                  <label htmlFor="new-password">Nouveau mot de passe</label>
+                  <input
+                    id="new-password"
+                    name="new-password"
+                    type="password"
+                    required
+                    minLength={8}
+                    maxLength={128}
+                    autoComplete="new-password"
+                  />
+                  <label htmlFor="confirm-password">Confirmer le mot de passe</label>
+                  <input
+                    id="confirm-password"
+                    name="confirm-password"
+                    type="password"
+                    required
+                    minLength={8}
+                    maxLength={128}
+                    autoComplete="new-password"
+                  />
+                  <output className="online-error" aria-live="polite">{error}</output>
+                  <button className="primary-button" disabled={busy}>
+                    {busy ? "Enregistrement…" : "Enregistrer le nouveau mot de passe"}
+                    <ArrowRight size={17} />
+                  </button>
+                </form>
+              )}
+              <output className="online-notice" aria-live="polite">{notice}</output>
+              <a href="/connexion">Retour à la connexion</a>
+            </div>
+          ) : forgot ? (
+            <div className="auth-reset">
+              <h2>Mot de passe oublié ?</h2>
+              <p>Indique l’adresse e-mail associée à ton compte. Nous t’enverrons un lien valable une heure.</p>
+              <form onSubmit={requestReset}>
+                <label htmlFor="reset-email">E-mail</label>
+                <input id="reset-email" name="email" type="email" required autoComplete="email" />
+                <output className="online-error" aria-live="polite">{error}</output>
+                <output className="online-notice" aria-live="polite">{notice}</output>
+                <button className="primary-button" disabled={busy}>
+                  {busy ? "Envoi…" : "Envoyer le lien"}
+                  <ArrowRight size={17} />
+                </button>
+              </form>
+              <button type="button" className="text-button" onClick={() => { setForgot(false); setError(""); setNotice(""); }}>
+                Retour à la connexion
+              </button>
+            </div>
+          ) : (
+          <>
           <div className="panel-tabs">
             <button
               aria-pressed={!signup}
@@ -145,6 +272,11 @@ export default function SignIn() {
               maxLength={128}
               autoComplete={signup ? "new-password" : "current-password"}
             />
+            {!signup && (
+              <button type="button" className="text-button" onClick={() => { setForgot(true); setError(""); setNotice(""); }}>
+                Mot de passe oublié ?
+              </button>
+            )}
             {signup && (
               <small>Au moins 8 caractères. Ne réutilise pas un mot de passe important.</small>
             )}
@@ -159,6 +291,8 @@ export default function SignIn() {
           <p className="auth-note">
             Les parties privées nécessitent un compte. Le jeu local reste libre.
           </p>
+          </>
+          )}
         </section>
       </div>
     </OnlineShell>
