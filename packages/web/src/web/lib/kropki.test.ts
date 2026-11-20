@@ -198,6 +198,67 @@ test("Tactique trouve une capture sur un 21x17 dense même si le score bon march
   expect(computerMove(g, "normal", () => 0)).toEqual([2, 3]);
 });
 
+test("Tactique bloque sur un 21x17 dense même si le blocage est hors du top 8 bon marché", () => {
+  const g = createGame(21, 17);
+  g.turn = 1;
+
+  // Dense but open filler rows: enough occupied cells without closing zones.
+  for (let y = 10; y < 16; y++)
+    for (let x = 0; x < 19; x++)
+      g.board[y * g.w + x] = y % 2 === 0 ? 1 : 2;
+
+  // Nine independent attractive-looking clusters push the defensive move
+  // below the first eight candidates under the cheap neighbourhood heuristic.
+  for (const cy of [1, 4, 7])
+    for (const cx of [7, 12, 17]) {
+      for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]])
+        g.board[(cy + dy) * g.w + cx + dx] = 1;
+      g.board[(cy - 1) * g.w + cx - 1] = 2;
+      g.board[(cy + 1) * g.w + cx + 1] = 2;
+    }
+
+  // The only safe defensive move is (2, 3): if red plays there, it captures
+  // the blue point at (3, 3). The nine clusters are unrelated decoys.
+  g.board[3 * g.w + 3] = 1;
+  g.board[2 * g.w + 3] = 2;
+  g.board[3 * g.w + 4] = 2;
+  g.board[4 * g.w + 3] = 2;
+
+  const cheapScore = (x: number, y: number) => {
+    let own = 0;
+    let enemy = 0;
+    let near = 0;
+    for (let i = 0; i < g.board.length; i++) {
+      if (!g.board[i] || captured(g, i)) continue;
+      const dx = Math.abs((i % g.w) - x);
+      const dy = Math.abs(Math.floor(i / g.w) - y);
+      const distance = Math.max(dx, dy);
+      if (distance === 1) {
+        if (g.board[i] === g.turn) own++;
+        else enemy++;
+      }
+      if (distance === 2 && g.board[i] === g.turn) near++;
+    }
+    return own * 2.5 + enemy * 3 + near * 0.3 -
+      (own > 4 ? 10 : 0) - Math.hypot(x - g.w / 2, y - g.h / 2) * 0.12;
+  };
+  const blockScore = cheapScore(2, 3);
+  let betterCheapCandidates = 0;
+  for (let y = 0; y < g.h; y++)
+    for (let x = 0; x < g.w; x++) {
+      if (!legal(g, x, y)) continue;
+      const nearOccupied = g.board.some((value, i) => value &&
+        Math.max(Math.abs((i % g.w) - x), Math.abs(Math.floor(i / g.w) - y)) <= 2);
+      if (nearOccupied && cheapScore(x, y) > blockScore) betterCheapCandidates++;
+    }
+
+  expect(betterCheapCandidates).toBeGreaterThanOrEqual(8);
+  const before = scores(g);
+  const opponentThreat = play({ ...g, turn: 2 }, 2, 3);
+  expect(scores(opponentThreat)[2] - before[2]).toBe(1);
+  expect(computerMove(g, "normal", () => 0)).toEqual([2, 3]);
+});
+
 test("Tactique évite un gain immédiat qui ferait perdre deux points au tour adverse", () => {
   const g = createGame(13, 9);
   g.turn = 1;
@@ -298,10 +359,10 @@ test("benchmark IA sur plateau 21x17 en milieu de partie", () => {
   computerMove(g, "normal", () => 0);
   const samples: number[] = [];
   const simulationCounts: number[] = [];
-  const simulationBreakdowns: Array<{ candidate: number; threat: number; reply: number }> = [];
+  const simulationBreakdowns: Array<{ candidate: number; threat: number; reply: number; plan: number }> = [];
   let move: [number, number] | null = null;
   for (let run = 0; run < 5; run++) {
-    const counts = { candidate: 0, threat: 0, reply: 0 };
+    const counts = { candidate: 0, threat: 0, reply: 0, plan: 0 };
     const started = performance.now();
     move = computerMove(g, "normal", () => 0, 600, (kind) => counts[kind]++);
     samples.push(performance.now() - started);
@@ -318,7 +379,7 @@ test("benchmark IA sur plateau 21x17 en milieu de partie", () => {
   expect(move).not.toBeNull();
   expect(legal(g, ...move!)).toBe(true);
   console.log(
-    `[BENCHMARK 21x17] médiane ${median.toFixed(2)} ms | min ${sorted[0].toFixed(2)} ms | max ${sorted[sorted.length - 1].toFixed(2)} ms | ${occupied} pions | simulations médianes ${medianSimulations} (candidats ${medianBreakdown.candidate}, menaces ${medianBreakdown.threat}, réponses ${medianBreakdown.reply}) | budget 600`,
+    `[BENCHMARK 21x17] médiane ${median.toFixed(2)} ms | min ${sorted[0].toFixed(2)} ms | max ${sorted[sorted.length - 1].toFixed(2)} ms | ${occupied} pions | simulations médianes ${medianSimulations} (candidats ${medianBreakdown.candidate}, menaces ${medianBreakdown.threat}, réponses ${medianBreakdown.reply}) | plans analysés ${medianBreakdown.plan}/8 | budget 600`,
   );
 });
 
