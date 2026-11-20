@@ -133,11 +133,13 @@ function Room({ id }: { id: string }) {
   const result = data.result
     ? (data.result.reason === "time" ? "Temps écoulé : " : data.result.reason === "disconnect" ? "Déconnexion : " : "") +
       (data.result.winner === null
-        ? "Égalité parfaite."
+        ? data.result.reason === "disconnect"
+          ? "Les deux joueurs ont été déconnectés : égalité."
+          : "Égalité parfaite."
         : data.result.winner === 1
           ? "Les bleus remportent la partie."
           : "Les rouges remportent la partie.") +
-      (data.result.reason === "resign" ? " Victoire par abandon." : data.result.reason === "disconnect" ? " Victoire après déconnexion." : "")
+      (data.result.reason === "resign" ? " Victoire par abandon." : data.result.reason === "disconnect" && data.result.winner !== null ? " Victoire après déconnexion." : "")
     : data.cancelled
       ? "Duel annulé : le premier pion n’a pas été placé à temps. Aucun changement d’Elo."
       : "";
