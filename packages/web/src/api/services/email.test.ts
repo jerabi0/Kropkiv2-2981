@@ -65,8 +65,14 @@ describe("e-mails d’authentification", () => {
     process.env.EMAIL_FROM = "Kropki <test@example.com>";
     globalThis.fetch = (async () => new Response("secret token body", { status: 500 })) as unknown as typeof fetch;
 
-    await expect(
-      sendPasswordResetEmail("joueur@example.com", "https://kropki.test/?token=secret"),
-    ).rejects.toThrow("HTTP 500");
+    let errorMessage = "";
+    try {
+      await sendPasswordResetEmail("joueur@example.com", "https://kropki.test/?token=secret");
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(errorMessage).toContain("HTTP 500");
+    expect(errorMessage).not.toContain("secret");
   });
 });
