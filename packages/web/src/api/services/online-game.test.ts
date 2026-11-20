@@ -85,8 +85,8 @@ test("classé prêt sans premier coup : annulation sans résultat ni Elo", () =>
 
 test("une déconnexion donne une minute de grâce après la tolérance réseau", () => {
   const started = act(ready(), "b", { type: "move", x: 1, y: 1 }, "start", 2000);
-  const lastSeen: [number, number] = [2000, 2000];
   const deadline = 2000 + PRESENCE_TIMEOUT_MS + DISCONNECT_GRACE_MS;
+  const lastSeen: [number, number] = [2000, deadline];
   expect(expireDisconnected(started, lastSeen, deadline - 1).result).toBeNull();
   expect(expireDisconnected(started, lastSeen, deadline).result).toEqual({
     reason: "disconnect",
@@ -96,7 +96,7 @@ test("une déconnexion donne une minute de grâce après la tolérance réseau",
 });
 test("un joueur qui revient pendant la grâce ne perd pas", () => {
   const started = act(ready(), "b", { type: "move", x: 1, y: 1 }, "start", 2000);
-  const reconnected: [number, number] = [2000, 2000 + PRESENCE_TIMEOUT_MS + 30000];
+  const reconnected: [number, number] = [2000 + PRESENCE_TIMEOUT_MS + 30000, 2000 + PRESENCE_TIMEOUT_MS + 30000];
   expect(expireDisconnected(started, reconnected, 2000 + PRESENCE_TIMEOUT_MS + DISCONNECT_GRACE_MS + 1).result).toBeNull();
 });
 test("deux déconnexions simultanées terminent en égalité", () => {
