@@ -4,20 +4,20 @@ import { ArrowRight, ShieldCheck } from "lucide-react";
 import { authClient, GOOGLE_RETURN_KEY } from "../lib/auth";
 import { OnlineShell } from "../components/online-shell";
 import { writeStorage, removeStorage } from "../lib/browser-storage";
+import { getEmailVerificationState } from "../lib/email-verification-state";
 export default function SignIn() {
   const searchParams = new URLSearchParams(window.location.search);
+  const verificationState = getEmailVerificationState(window.location.search);
   const [signup, setSignup] = useState(false),
     [busy, setBusy] = useState(false),
     [forgot, setForgot] = useState(false),
     [resetToken, setResetToken] = useState(searchParams.get("token")),
     [verificationError] = useState(
-      ["INVALID_TOKEN", "invalid_token", "TOKEN_EXPIRED", "token_expired"].includes(
-        searchParams.get("error") ?? "",
-      ) && searchParams.get("verified") === "1",
+      verificationState.error !== null && verificationState.isVerificationResult,
     ),
-    [verificationResult] = useState(searchParams.get("verified") === "1"),
+    [verificationResult] = useState(verificationState.isVerificationResult),
     [resetInvalid, setResetInvalid] = useState(
-      searchParams.get("error") === "INVALID_TOKEN" && searchParams.get("verified") !== "1",
+      searchParams.get("error") === "INVALID_TOKEN" && !verificationState.isVerificationResult,
     ),
     [resetDone, setResetDone] = useState(false),
     [notice, setNotice] = useState(
@@ -28,7 +28,7 @@ export default function SignIn() {
     [error, setError] = useState(
       searchParams.has("authErreur")
         ? "La connexion Google n’a pas abouti. Réessaie ou utilise ton e-mail."
-        : searchParams.get("error") === "INVALID_TOKEN" && searchParams.get("verified") !== "1"
+        : searchParams.get("error") === "INVALID_TOKEN" && !verificationState.isVerificationResult
           ? "Ce lien est invalide ou a expiré."
           : "",
     );
@@ -203,6 +203,7 @@ export default function SignIn() {
                   <label htmlFor="new-password">Nouveau mot de passe</label>
                   <input
                     id="new-password"
+                    aria-label="Nouveau mot de passe"
                     name="new-password"
                     type="password"
                     required
@@ -213,6 +214,7 @@ export default function SignIn() {
                   <label htmlFor="confirm-password">Confirmer le mot de passe</label>
                   <input
                     id="confirm-password"
+                    aria-label="Confirmer le mot de passe"
                     name="confirm-password"
                     type="password"
                     required
@@ -236,7 +238,7 @@ export default function SignIn() {
               <p>Indique l’adresse e-mail associée à ton compte. Nous t’enverrons un lien valable une heure.</p>
               <form onSubmit={requestReset}>
                 <label htmlFor="reset-email">E-mail</label>
-                <input id="reset-email" name="email" type="email" required autoComplete="email" />
+                <input id="reset-email" aria-label="E-mail de récupération" name="email" type="email" required autoComplete="email" />
                 <output className="online-error" aria-live="polite">{error}</output>
                 <output className="online-notice" aria-live="polite">{notice}</output>
                 <button className="primary-button" disabled={busy}>
