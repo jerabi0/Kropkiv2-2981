@@ -1,4 +1,4 @@
-# Audit fonctionnel — finalisé le 19 novembre 2026
+# Audit fonctionnel — finalisé le 19 novembre 2026, complément e-mail le 20 novembre 2026
 
 ## Corrections
 - URL inconnue : page explicite avec liens de retour, au lieu d'un écran vide.
@@ -20,7 +20,7 @@
 - Les comptes générés par ces tests sont supprimés par filtre strict e-mail ET nom ; les tests API nettoient leurs données.
 
 ## Limites restantes
-- Vérification d'e-mail et récupération de mot de passe : fournisseur d'envoi non configuré. Aucun envoi simulé.
+- Vérification d'e-mail et récupération de mot de passe intégrées avec Resend (Better Auth 1.6.19). Les e-mails ne sont activés que si `RESEND_API_KEY` et `EMAIL_FROM` sont définis ; vérification facultative par défaut pour ne pas bloquer les comptes existants. Les liens de réinitialisation expirent après une heure. La livraison en production reste à vérifier avec un domaine expéditeur validé et des identifiants Resend réels.
 - Connexion Google complète avec un compte réel : non vérifiée dans cet audit. Les méthodes et la configuration existantes restent inchangées.
 - Bundle JavaScript supérieur à 500 kB : avertissement de compilation non bloquant, optimisation non effectuée ici.
 - L'isolation de l'état au changement d'identifiant de salle est une protection structurelle React ; le passage direct entre deux salles avec une relecture ouverte n'a pas fait l'objet d'un scénario navigateur dédié.

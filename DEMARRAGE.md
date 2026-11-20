@@ -18,7 +18,10 @@ Ouvrir http://localhost:4200. Les modes locaux n'exigent pas de compte utilisate
 
 - `DATABASE_URL` et `DATABASE_AUTH_TOKEN` : connexion SQLite/Turso. `db:push` crée les tables d'authentification, `kropki_private_game`, `kropki_rating`, `kropki_queue` et `kropki_rating_result` ; vérifier les changements proposés avant d'utiliser une base existante.
 - `BETTER_AUTH_SECRET` : générer un secret privé aléatoire, par exemple avec `openssl rand -hex 32`.
-- `WEBSITE_URL` : origine publique de l'application, ou `http://localhost:4200` pour le développement e-mail.
+- `WEBSITE_URL` : origine publique de l'application, ou `http://localhost:4200` en développement.
+- `RESEND_API_KEY` : clé API Resend côté serveur. Laisser vide pour désactiver les e-mails d'authentification.
+- `EMAIL_FROM` : expéditeur validé dans Resend (par exemple `Kropki <noreply@ton-domaine.tld>`). Le domaine doit être vérifié chez Resend.
+- `REQUIRE_EMAIL_VERIFICATION` : `false` par défaut. Mettre `true` pour exiger une adresse vérifiée avant une connexion e-mail/mot de passe. Cette option n'est appliquée que si Resend est configuré.
 - `APPLICATION_ID`, `VITE_APPLICATION_ID`, `VITE_RUNABLE_AUTH_ISSUER` : valeurs injectées par Runable pour Google géré. Le broker n'accepte que les origines enregistrées : le parcours Google a été vérifié jusqu'à l'écran Google depuis l'aperçu Runable, pas depuis localhost.
 - Les variables de passerelle IA/paiement du template ne sont pas utilisées par le moteur de Kropki.
 
@@ -39,13 +42,14 @@ Ne jamais publier `.env`. Google géré ne demande pas de secret OAuth Google pe
 ## Comptes et parties privées
 
 - Inscription et connexion e-mail/mot de passe ; pseudonyme public, e-mail non exposé dans les salles. Bouton Google via le service géré Runable.
+- E-mails transactionnels via Resend : vérification à l'inscription et récupération du mot de passe (lien valable une heure). Les modèles sont en français. Sans `RESEND_API_KEY` et `EMAIL_FROM`, ces fonctions restent désactivées. La vérification n'est pas obligatoire par défaut afin de préserver l'accès des comptes existants.
 - `/connexion` : compte ; `/en-ligne` : création et historique personnel ; `/partie/:id` : invitation ou salle.
 - Un lien aléatoire invite un second compte. Un troisième compte ne peut ni rejoindre ni lire le plateau. Un lien non rejoint expire après 24 heures ; le démarrage exige les deux joueurs prêts avant cette échéance.
 - Trois tailles et les cinq durées communes. Le compte à rebours démarre au premier pion légalement placé après les deux confirmations et continue pendant une déconnexion. Pas de pause ni d'annulation en ligne.
 - Serveur autoritaire : appartenance à la salle, tour, légalité, expiration, score, abandon. Écritures conditionnées à la révision et déduplication des actions.
 - Plateau, coups, horaires et résultat sont persistés en base. Reconnexion par le même compte et le même lien ; synchronisation par interrogation du serveur toutes les secondes, sans WebSocket ni indicateur de présence adverse.
 - Relecture après la fin ; sauvegarde locale conservée séparément.
-- La vérification d'adresse et l'envoi de récupération de mot de passe ne sont **pas configurés**. Aucun faux envoi d'e-mail n'est affiché.
+- La livraison réelle des e-mails dépend d'une clé Resend et d'une adresse expéditrice validée. Vérifier ces deux paramètres dans l'environnement de déploiement avant de tester l'envoi.
 
 ## Duels classés et statistiques
 
