@@ -115,7 +115,7 @@ function savedResult(value: unknown, game: Game): Result | null {
     (r.resignedBy === 1 || r.resignedBy === 2) &&
     r.winner === other(r.resignedBy)
   )
-    return { reason: "resign", winner: r.winner, resignedBy: r.resignedBy };
+    return { reason: "resign", winner: other(r.resignedBy), resignedBy: r.resignedBy };
   const reason = r?.reason;
   return {
     reason: reason === "time" || reason === "full" || reason === "score" ? reason : "score",
