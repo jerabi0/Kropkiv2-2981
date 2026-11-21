@@ -24,14 +24,18 @@ export async function seek(
   }
   if (config) {
     const p = await profile(tx, who.id);
+    const previous = q;
     const preserve =
-      q && q.expiresAt > now && q.size === config.size && q.minutes === config.minutes;
+      previous &&
+      previous.expiresAt > now &&
+      previous.size === config.size &&
+      previous.minutes === config.minutes;
     const values = {
       userId: who.id,
       name: who.name.slice(0, 24),
       ...config,
       elo: p.elo,
-      joinedAt: preserve ? q.joinedAt : now,
+      joinedAt: previous && preserve ? previous.joinedAt : now,
       expiresAt: now + lease,
       roomId: null,
     };
