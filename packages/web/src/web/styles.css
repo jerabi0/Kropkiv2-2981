@@ -4423,7 +4423,8 @@ dialog::backdrop {
 }
 
 
-/* Terrains d'ambiance : habillage purement visuel, sans effet sur les règles. */
+/* Terrains d'ambiance : habillage purement visuel, sans effet sur les règles.
+   Les décors restent en périphérie pour préserver la lecture de la grille. */
 .arena-stage {
   overflow: hidden;
   border-radius: 12px;
