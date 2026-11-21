@@ -3,10 +3,17 @@ import { ORPCError } from "@orpc/server";
 import { db } from "../database";
 import { privateGames as rooms } from "../database/online-schema";
 import { ratings, ratingResults } from "../database/ranked-schema";
-import { expire, expireDisconnected, type OnlineGame } from "./online-game";
+import {
+  expire,
+  expireDisconnected,
+  PRESENCE_TIMEOUT_MS,
+  DISCONNECT_GRACE_MS,
+  type OnlineGame,
+} from "./online-game";
 import { eloDelta } from "./elo";
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export type RoomRow = typeof rooms.$inferSelect;
+export const PRESENCE_WRITE_INTERVAL_MS = 5_000;
 export async function profile(tx: Tx, id: string) {
   await tx.insert(ratings).values({ userId: id }).onConflictDoNothing();
   const [r] = await tx.select().from(ratings).where(eq(ratings.userId, id));
@@ -55,7 +62,28 @@ export async function saveRoom(tx: Tx, row: RoomRow, next: OnlineGame) {
   if (!saved) throw new ORPCError("CONFLICT", { message: "La partie a changé. Actualise-la." });
   return { row: saved, state };
 }
-export async function loadRoom(tx: Tx, id: string, now = Date.now()) {
+async function touchPresence(tx: Tx, row: RoomRow, userId: string, now: number) {
+  const state = JSON.parse(row.state) as OnlineGame;
+  if (state.startedAt === null || state.result || state.cancelled) return row;
+
+  const isBlue = row.blueId === userId;
+  const isRed = row.redId === userId;
+  if (!isBlue && !isRed) return row;
+
+  const lastSeenAt = isBlue ? row.blueSeenAt : row.redSeenAt;
+  const disconnectDeadline = lastSeenAt + PRESENCE_TIMEOUT_MS + DISCONNECT_GRACE_MS;
+  if (lastSeenAt > 0 && (now - lastSeenAt < PRESENCE_WRITE_INTERVAL_MS || now >= disconnectDeadline))
+    return row;
+
+  const [updated] = await tx
+    .update(rooms)
+    .set(isBlue ? { blueSeenAt: now } : { redSeenAt: now })
+    .where(eq(rooms.id, row.id))
+    .returning();
+  return updated ?? row;
+}
+
+export async function loadRoom(tx: Tx, id: string, now = Date.now(), activeUserId?: string) {
   const [initial] = await tx.select().from(rooms).where(eq(rooms.id, id));
   if (!initial) throw new ORPCError("NOT_FOUND", { message: "Invitation introuvable." });
   let row = initial;
@@ -67,6 +95,7 @@ export async function loadRoom(tx: Tx, id: string, now = Date.now()) {
     const [updated] = await tx.update(rooms).set(baseline).where(eq(rooms.id, row.id)).returning();
     if (updated) row = updated;
   }
+  if (activeUserId) row = await touchPresence(tx, row, activeUserId, now);
   const old = JSON.parse(row.state) as OnlineGame;
   const timed = expire(old, now);
   const state =
