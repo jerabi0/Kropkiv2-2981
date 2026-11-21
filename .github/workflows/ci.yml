@@ -44,9 +44,8 @@ jobs:
         if: always()
         run: bun run --cwd packages/desktop typecheck
 
-      - name: Vérifier les types du mobile (non bloquant)
+      - name: Vérifier les types du mobile
         if: always()
-        continue-on-error: true
         run: bun run --cwd packages/mobile typecheck
 
       - name: Compiler les clients
