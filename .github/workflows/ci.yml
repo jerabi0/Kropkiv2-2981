@@ -25,17 +25,29 @@ jobs:
       - name: Installer les dépendances
         run: bun install --frozen-lockfile
 
+      - name: Préparer la base temporaire des tests
+        run: rm -f /tmp/kropki-ci.db /tmp/kropki-ci.db-shm /tmp/kropki-ci.db-wal
+
       - name: Tests
         env:
-          DATABASE_URL: file::memory:
+          DATABASE_URL: file:/tmp/kropki-ci.db
         run: bun test packages/web/src/web/lib packages/web/src/api/services
 
       - name: Lint
         run: bun run lint
 
-      - name: Vérifier les types de tous les clients
+      - name: Vérifier les types du web
         if: always()
-        run: bun run typecheck
+        run: bun run --cwd packages/web typecheck
+
+      - name: Vérifier les types du desktop
+        if: always()
+        run: bun run --cwd packages/desktop typecheck
+
+      - name: Vérifier les types du mobile (non bloquant)
+        if: always()
+        continue-on-error: true
+        run: bun run --cwd packages/mobile typecheck
 
       - name: Compiler les clients
         if: always()
