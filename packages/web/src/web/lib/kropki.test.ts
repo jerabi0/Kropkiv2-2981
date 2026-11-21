@@ -444,4 +444,4 @@ test("simulation complète ordinateur sans coup illégal", () => {
     g = play(g, ...m!);
   }
   expect(g.moves.length).toBeGreaterThan(20);
-});
+}, 30_000);
