@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ComponentProps, type CSSProperties } from "react";
 import "../seal-styles.css";
 import { GameBoard } from "./game-board";
+import { TerrainAmbience } from "./terrain-ambience";
 import { ArenaControls } from "./arena-controls";
 import { ArenaAvatar } from "./arena-avatar";
 import { EFFECT_COLORS, SEAL_STYLES, TERRAINS, TERRAIN_COLORS, useArenaSettings } from "../lib/arena-settings";
@@ -290,8 +291,8 @@ export function ArenaBoard({
       aria-label={`Arène Kropki · terrain ${TERRAINS[s.terrain]}`}
       style={{ "--arena-effect": color, "--terrain-glow": terrainColor, "--terrain-base": terrainColor + "18" } as CSSProperties}
     >
-      <div className="arena-stage" data-terrain={s.terrain}>
-        <GameBoard {...props} />
+      <div className="arena-stage" data-terrain={s.terrain} data-effects={s.effects ? "on" : "off"}>
+        <GameBoard {...props} ambience={<TerrainAmbience terrain={s.terrain} enabled={s.effects} />} />
         {event && s.effects && active && (
           <svg
             key={"fx-" + event.id}
