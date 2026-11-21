@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@types/react": "19.1.17",
+    "@types/node": "^25.3.5",
     "typescript": "7.0.1-rc"
   },
   "private": true
