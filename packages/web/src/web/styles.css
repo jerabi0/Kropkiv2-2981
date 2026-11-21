@@ -4417,6 +4417,19 @@ dialog::backdrop {
 .selected-point { filter: drop-shadow(0 0 5px var(--turn-color)); }
 .preview-boundary { opacity: .8; filter: drop-shadow(0 0 3px #ffd569); }
 .arena-stage .game-board circle { transition: opacity .15s ease; }
+.arena-stage .game-board { z-index: 2; }
+.terrain-ambience {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: .72;
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 0 43%, #000 88%);
+  mask-image: radial-gradient(ellipse at center, transparent 0 43%, #000 88%);
+}
 .tutorial-board .move-intent { margin-bottom: 12px; }
 @media (prefers-reduced-motion: reduce) {
   .arena-stage .game-board circle { transition: none; }
@@ -4925,6 +4938,11 @@ dialog::backdrop {
   .arena-stage::after { animation: none !important; }
   .arena-stage[data-terrain="12"] .board-paper::before,
   .arena-stage[data-terrain="13"] .board-paper::before { animation: none !important; }
+}
+.arena-stage[data-effects="off"]::before,
+.arena-stage[data-effects="off"]::after {
+  animation: none !important;
+  opacity: .14;
 }
 
 
