@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import "../capture-effects.css";
 import { captured, legal, type Game } from "../lib/kropki";
 import { zoneKey, type Feedback } from "../lib/game-feedback";
@@ -11,6 +11,7 @@ export function GameBoard({
   target,
   selection,
   previewGame,
+  ambience,
   ariaLabel = "Plateau Kropki : sélectionne une intersection pour poser un point",
 }: {
   game: Game;
@@ -20,6 +21,7 @@ export function GameBoard({
   target?: [number, number];
   selection?: [number, number];
   previewGame?: Game;
+  ambience?: ReactNode;
   ariaLabel?: string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -32,6 +34,7 @@ export function GameBoard({
     last = game.moves.at(-1);
   return (
     <div className={"board-paper " + (locked ? "board-locked" : "") + (majorCapture ? " capture-impact-board" : "")}>
+      {ambience}
       <svg
         className="game-board"
         viewBox={`0 0 ${vw} ${vh}`}

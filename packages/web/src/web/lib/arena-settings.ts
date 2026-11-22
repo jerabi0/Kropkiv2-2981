@@ -2,11 +2,13 @@ import { useSyncExternalStore } from "react";
 export const ELEMENTS = ["Néon", "Feu", "Glace", "Foudre", "Ténèbres"] as const;
 export const TERRAINS = [
   "Cité néon", "Volcan", "Banquise", "Plaine orageuse", "Caverne obscure", "Océan",
-  "Steppe", "Canyon", "Sanctuaire", "Jungle", "Cosmos", "Cratère",
+  "Steppe", "Canyon", "Sanctuaire", "Clairière du dojo", "Cosmos", "Cratère",
+  "Sentier des sakuras", "Ruines du désert",
 ] as const;
 export const TERRAIN_COLORS = [
   "#4ff3ff", "#ff8a3c", "#9fe8ff", "#ffe14a", "#c79bff", "#3fa9ff",
-  "#7dffb0", "#e0a85e", "#fff2a8", "#7ee06a", "#9a8cff", "#ff2a3a",
+  "#7dffb0", "#e0a85e", "#fff2a8", "#78c978", "#9a8cff", "#ff2a3a",
+  "#ffabc9", "#e4b976",
 ] as const;
 export const SEALS = [
   "Cercle magique",
