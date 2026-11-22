@@ -64,11 +64,13 @@ export function expireDisconnected(
     .sort((a, b) => a.deadline - b.deadline);
   if (!expired.length) return g;
   const first = expired[0];
-  const simultaneous = expired[1]?.deadline === first.deadline;
+  const simultaneous = expired.length > 1;
   return {
     ...g,
     game: { ...g.game, ended: true },
-    finishedAt: first.deadline,
+    finishedAt: simultaneous
+      ? Math.max(...expired.map((entry) => entry.deadline))
+      : first.deadline,
     result: {
       reason: "disconnect",
       winner: simultaneous ? null : other(first.player),

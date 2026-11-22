@@ -139,16 +139,21 @@ test("deux déconnexions simultanées persistent une égalité", async () => {
   await db.run(sql.raw(
     "INSERT INTO user (id) VALUES ('integration-blue'), ('integration-red')",
   ));
-  await insertRoom(id, startedGame(true), 2_000, 2_000);
+  await insertRoom(id, startedGame(true), 2_000, 5_000);
 
-  const settled = await db.transaction((tx) => loadRoom(tx, id, 72_000));
+  const settled = await db.transaction((tx) => loadRoom(tx, id, 75_000));
   const [stored] = await db.select().from(privateGames).where(eq(privateGames.id, id));
   const persisted = JSON.parse(stored.state) as OnlineGame;
+  const profiles = await db.select().from(ratings);
 
   expect(settled.state.result).toEqual({ reason: "disconnect", winner: null });
+  expect(settled.state.finishedAt).toBe(75_000);
   expect(settled.state.rating?.delta).toBe(0);
+  expect(profiles).toHaveLength(2);
+  expect(profiles.every((profile) => profile.elo === 1200)).toBe(true);
   expect(stored.revision).toBe(1);
   expect(persisted.result).toEqual(settled.state.result);
+  expect(persisted.finishedAt).toBe(75_000);
   expect(persisted.rating).toEqual(settled.state.rating);
   const ledger = await db.select().from(ratingResults);
   expect(ledger).toHaveLength(1);
