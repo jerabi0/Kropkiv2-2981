@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le dépôt
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Installer Bun
         uses: oven-sh/setup-bun@v2
@@ -44,9 +44,8 @@ jobs:
         if: always()
         run: bun run --cwd packages/desktop typecheck
 
-      - name: Vérifier les types du mobile (non bloquant)
+      - name: Vérifier les types du mobile
         if: always()
-        continue-on-error: true
         run: bun run --cwd packages/mobile typecheck
 
       - name: Compiler les clients
