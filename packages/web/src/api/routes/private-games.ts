@@ -17,22 +17,6 @@ import {
   DISCONNECT_GRACE_MS,
 } from "../services/online-game";
 const room = z.object({ id: z.string().regex(/^[a-f0-9]{48}$/) });
-async function touchPresence(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  row: typeof table.$inferSelect,
-  userId: string,
-  now: number,
-) {
-  if (row.blueId === userId) {
-    const [updated] = await tx.update(table).set({ blueSeenAt: now }).where(eq(table.id, row.id)).returning();
-    return updated ?? row;
-  }
-  if (row.redId === userId) {
-    const [updated] = await tx.update(table).set({ redSeenAt: now }).where(eq(table.id, row.id)).returning();
-    return updated ?? row;
-  }
-  return row;
-}
 function response(row: typeof table.$inferSelect, state: OnlineGame, id: string) {
   const player = side(state, id);
   return {
@@ -80,9 +64,8 @@ export const privateGames = {
     }),
   get: authed.input(room).handler(async ({ input, context }) =>
     db.transaction(async (tx) => {
-      const { row, state } = await loadRoom(tx, input.id);
-      const current = state.result || state.cancelled ? row : await touchPresence(tx, row, context.user.id, Date.now());
-      return response(current, state, context.user.id);
+      const { row, state } = await loadRoom(tx, input.id, Date.now(), context.user.id);
+      return response(row, state, context.user.id);
     }),
   ),
   join: authed.input(room).handler(async ({ input, context }) => {
@@ -120,7 +103,8 @@ export const privateGames = {
     )
     .handler(async ({ input, context }) =>
       db.transaction(async (tx) => {
-        const { row, state } = await loadRoom(tx, input.id);
+        const now = Date.now();
+        const { row, state } = await loadRoom(tx, input.id, now, context.user.id);
         if (!side(state, context.user.id)) throw new ORPCError("FORBIDDEN");
         if (
           state.result ||
@@ -128,13 +112,12 @@ export const privateGames = {
           state.requests.includes(context.user.id + ":" + input.requestId)
         )
           return response(row, state, context.user.id);
-        const activeRow = await touchPresence(tx, row, context.user.id, Date.now());
         if (input.action.type === "move" && row.revision !== input.revision)
           throw new ORPCError("CONFLICT", {
             message: "La partie a changé : attends sa synchronisation.",
           });
-        const next = act(state, context.user.id, input.action, input.requestId, Date.now());
-        const saved = await saveRoom(tx, activeRow, next);
+        const next = act(state, context.user.id, input.action, input.requestId, now);
+        const saved = await saveRoom(tx, row, next);
         return response(saved.row, saved.state, context.user.id);
       }),
     ),

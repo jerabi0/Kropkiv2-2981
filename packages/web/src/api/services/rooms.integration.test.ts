@@ -4,7 +4,7 @@ import { db } from "../database";
 import { privateGames } from "../database/online-schema";
 import { ratings, ratingResults } from "../database/ranked-schema";
 import { act, joinGame, newOnlineGame, type OnlineGame } from "./online-game";
-import { loadRoom } from "./rooms";
+import { loadRoom, PRESENCE_WRITE_INTERVAL_MS } from "./rooms";
 
 const blue = { id: "integration-blue", name: "Bleu" };
 const red = { id: "integration-red", name: "Rouge" };
@@ -96,6 +96,67 @@ test("loadRoom ne pénalise pas un joueur reconnecté avant la limite", async ()
 
   expect(settled.state.result).toBeNull();
   expect(stored.revision).toBe(0);
+});
+
+test("loadRoom enregistre la présence avant le calcul et limite les écritures", async () => {
+  const id = "presence-heartbeat-integration-room";
+  await insertRoom(id, startedGame(), 2_000, 71_999);
+
+  const first = await db.transaction((tx) => loadRoom(tx, id, 71_999, blue.id));
+  expect(first.state.result).toBeNull();
+  expect(first.row.blueSeenAt).toBe(71_999);
+  expect(first.row.revision).toBe(0);
+
+  const throttled = await db.transaction((tx) =>
+    loadRoom(tx, id, 71_999 + PRESENCE_WRITE_INTERVAL_MS - 1, blue.id),
+  );
+  expect(throttled.row.blueSeenAt).toBe(71_999);
+  expect(throttled.row.revision).toBe(0);
+
+  const refreshed = await db.transaction((tx) =>
+    loadRoom(tx, id, 71_999 + PRESENCE_WRITE_INTERVAL_MS, blue.id),
+  );
+  expect(refreshed.row.blueSeenAt).toBe(71_999 + PRESENCE_WRITE_INTERVAL_MS);
+  expect(refreshed.row.revision).toBe(0);
+});
+
+test("un heartbeat à l’échéance ne réanime pas une partie expirée", async () => {
+  const id = "late-heartbeat-integration-room";
+  await insertRoom(id, startedGame(), 2_000, 71_999);
+
+  const settled = await db.transaction((tx) => loadRoom(tx, id, 72_000, blue.id));
+  expect(settled.state.result).toEqual({
+    reason: "disconnect",
+    winner: 2,
+    disconnectedBy: 1,
+  });
+  expect(settled.row.blueSeenAt).toBe(2_000);
+  expect(settled.row.revision).toBe(1);
+});
+
+test("deux déconnexions simultanées persistent une égalité", async () => {
+  const id = "simultaneous-disconnect-integration-room";
+  await db.run(sql.raw(
+    "INSERT INTO user (id) VALUES ('integration-blue'), ('integration-red')",
+  ));
+  await insertRoom(id, startedGame(true), 2_000, 5_000);
+
+  const settled = await db.transaction((tx) => loadRoom(tx, id, 75_000));
+  const [stored] = await db.select().from(privateGames).where(eq(privateGames.id, id));
+  const persisted = JSON.parse(stored.state) as OnlineGame;
+  const profiles = await db.select().from(ratings);
+
+  expect(settled.state.result).toEqual({ reason: "disconnect", winner: null });
+  expect(settled.state.finishedAt).toBe(75_000);
+  expect(settled.state.rating?.delta).toBe(0);
+  expect(profiles).toHaveLength(2);
+  expect(profiles.every((profile) => profile.elo === 1200)).toBe(true);
+  expect(stored.revision).toBe(1);
+  expect(persisted.result).toEqual(settled.state.result);
+  expect(persisted.finishedAt).toBe(75_000);
+  expect(persisted.rating).toEqual(settled.state.rating);
+  const ledger = await db.select().from(ratingResults);
+  expect(ledger).toHaveLength(1);
 });
 
 test("une déconnexion en partie classée persiste le résultat Elo une seule fois", async () => {
