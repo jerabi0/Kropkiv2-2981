@@ -14,6 +14,8 @@ type Particle = {
   alpha: number;
   color: string;
   depth: number;
+  sprite: HTMLCanvasElement | null;
+  spriteRadius: number;
 };
 
 const SCENES: TerrainScene[] = [
@@ -66,10 +68,62 @@ function makeParticle(scene: TerrainScene, index: number, width: number, height:
     alpha: 0.2 + random(index * 13 + 5) * 0.42,
     color: scene.colors[Math.floor(random(index * 13 + 6) * scene.colors.length)]!,
     depth,
+    sprite: null,
+    spriteRadius: 0,
   };
 }
 
-function drawScenery(ctx: CanvasRenderingContext2D, terrain: number, width: number, height: number, time: number) {
+function createParticleSprite(particle: Particle): { canvas: HTMLCanvasElement; radius: number } | null {
+  const { kind, color, size } = particle;
+  if (!["ember", "firefly", "mote", "snow", "spore", "star"].includes(kind)) return null;
+
+  const radius = kind === "snow" ? size * 1.8 + 5 : kind === "star" ? size * 3 : size * (kind === "firefly" ? 5 : kind === "spore" ? 3.5 : 3);
+  const scale = 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(radius * 2 * scale);
+  canvas.height = Math.ceil(radius * 2 * scale);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.scale(scale, scale);
+  const center = radius;
+  const gradient = ctx.createRadialGradient(center, center, 0, center, center, radius);
+  gradient.addColorStop(0, color);
+  gradient.addColorStop(0.24, color + "99");
+  gradient.addColorStop(1, color + "00");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(center, center, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (kind === "snow") {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(center, center, size * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.52;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.55;
+    ctx.beginPath();
+    ctx.moveTo(center - size, center);
+    ctx.lineTo(center + size, center);
+    ctx.moveTo(center, center - size);
+    ctx.lineTo(center, center + size);
+    ctx.stroke();
+  } else if (kind === "firefly") {
+    ctx.fillStyle = "#fff8d6";
+    ctx.beginPath();
+    ctx.arc(center, center, Math.max(0.65, size * 0.42), 0, Math.PI * 2);
+    ctx.fill();
+  } else if (kind === "star") {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(center, center, size * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return { canvas, radius };
+}
+
+function drawScenery(ctx: CanvasRenderingContext2D, terrain: number, width: number, height: number) {
   const polygon = (points: [number, number][], color: string | CanvasGradient | CanvasPattern) => {
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -100,12 +154,6 @@ function drawScenery(ctx: CanvasRenderingContext2D, terrain: number, width: numb
   if (terrain === 0) {
     polygon([[0, .8], [.1, .72], [.18, .75], [.18, 1], [0, 1]], "#0c2130");
     polygon([[.82, .76], [.9, .7], [1, .78], [1, 1], [.82, 1]], "#15142e");
-    for (let i = 0; i < 8; i++) {
-      const y = .81 + (i % 4) * .045;
-      ctx.fillStyle = i % 2 ? "#ff62e7" : "#4ff3ff";
-      ctx.globalAlpha = .3 + Math.sin(time * .002 + i) * .12;
-      ctx.fillRect((i % 2 ? .04 : .86) * width + (i % 4) * 11, y * height, 3, 3);
-    }
   } else if (terrain === 1 || terrain === 11) {
     polygon([[0, .85], [.1, .7], [.2, .79], [.31, .69], [.4, .83], [.4, 1], [0, 1]], terrain === 1 ? "#35190f" : "#211819");
     polygon([[.62, .85], [.72, .72], [.82, .79], [.91, .68], [1, .82], [1, 1], [.62, 1]], terrain === 1 ? "#442018" : "#2d1b19");
@@ -121,11 +169,6 @@ function drawScenery(ctx: CanvasRenderingContext2D, terrain: number, width: numb
   } else if (terrain === 3) {
     glow(.08, .08, .5, "#8176c522");
     glow(.94, .1, .42, "#607ab322");
-    const pulse = Math.max(0, Math.sin(time * .00025 + 1)) ** 22;
-    if (pulse > .62) {
-      curve([.78, .05, .72, .22, .89, .26, .84, .46], `rgba(225,237,255,${(pulse - .62) * .55})`, 2);
-      curve([.84, .3, .95, .33, .91, .42, .96, .55], `rgba(225,237,255,${(pulse - .62) * .32})`, 1);
-    }
   } else if (terrain === 4) {
     polygon([[0, 0], [.05, 0], [.1, .16], [.16, 0], [.22, 0], [.27, .12], [.33, 0], [0, 0]], "#281b36");
     polygon([[.68, 0], [.75, .15], [.81, 0], [.9, .12], [.94, 0], [1, 0], [1, 0]], "#29172f");
@@ -134,10 +177,6 @@ function drawScenery(ctx: CanvasRenderingContext2D, terrain: number, width: numb
     glow(.12, .84, .16, "#a76de633");
     glow(.9, .86, .18, "#d358a833");
   } else if (terrain === 5) {
-    for (let i = 0; i < 4; i++) {
-      const y = .78 + i * .065;
-      curve([0, y, .23, y + Math.sin(time * .0005 + i) * .012, .42, y - .01, .63, y], `#67c6ee${i < 2 ? "28" : "40"}`, 2 + i * .35);
-    }
     curve([.11, .18, .06, .32, .2, .37, .14, .52], "#a8edff30", 3);
     curve([.9, .12, .84, .28, .98, .35, .91, .5], "#a8edff25", 2.5);
   } else if (terrain === 6) {
@@ -164,14 +203,6 @@ function drawScenery(ctx: CanvasRenderingContext2D, terrain: number, width: numb
       curve([.81, .66, .86, .56, .91, .56, .96, .66], "#47352599", 5);
     }
   } else if (terrain === 8) {
-    for (let i = 0; i < 5; i++) {
-      const x = .08 + i * .21;
-      const sway = Math.sin(time * .00035 + i) * .015;
-      const gradient = ctx.createLinearGradient(x * width, 0, (x + .18 + sway) * width, height * .8);
-      gradient.addColorStop(0, "#ffe9a00a");
-      gradient.addColorStop(1, "#ffe9a02b");
-      polygon([[x, 0], [x + .04 + sway, 0], [x + .18 + sway, .8], [x + .12, .8]], gradient);
-    }
     for (const x of [.04, .92]) {
       ctx.fillStyle = "#7a673b44";
       ctx.fillRect(x * width, .18 * height, .045 * width, .72 * height);
@@ -193,10 +224,6 @@ function drawScenery(ctx: CanvasRenderingContext2D, terrain: number, width: numb
       ctx.arc(x * width, y * height, 2 + random(i + 100) * 3, 0, Math.PI * 2);
       ctx.fill();
     }
-    if (terrain === 9) {
-      glow(.08, .76, .11, `rgba(255,209,124,${.1 + Math.sin(time * .001) * .025})`);
-      glow(.92, .75, .11, `rgba(255,209,124,${.08 + Math.sin(time * .001 + 1) * .02})`);
-    }
   } else if (terrain === 10) {
     glow(.14, .24, .4, "#8d68f622");
     glow(.86, .75, .38, "#3482d522");
@@ -208,6 +235,68 @@ function drawScenery(ctx: CanvasRenderingContext2D, terrain: number, width: numb
     ctx.lineTo(.21 * width, .18 * height);
     ctx.lineTo(.31 * width, .24 * height);
     ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawAnimatedScenery(ctx: CanvasRenderingContext2D, terrain: number, width: number, height: number, time: number) {
+  ctx.save();
+  ctx.globalAlpha *= 0.52;
+  const curve = (points: [number, number, number, number, number, number, number, number], color: string, lineWidth: number) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(points[0] * width, points[1] * height);
+    ctx.bezierCurveTo(points[2] * width, points[3] * height, points[4] * width, points[5] * height, points[6] * width, points[7] * height);
+    ctx.stroke();
+  };
+  const glow = (x: number, y: number, radius: number, color: string) => {
+    const gradient = ctx.createRadialGradient(x * width, y * height, 0, x * width, y * height, radius * width);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(1, color + "00");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(x * width - radius * width, y * height - radius * width, radius * width * 2, radius * width * 2);
+  };
+
+  if (terrain === 0) {
+    for (let i = 0; i < 8; i++) {
+      const y = .81 + (i % 4) * .045;
+      ctx.fillStyle = i % 2 ? "#ff62e7" : "#4ff3ff";
+      ctx.globalAlpha = .3 + Math.sin(time * .002 + i) * .12;
+      ctx.fillRect((i % 2 ? .04 : .86) * width + (i % 4) * 11, y * height, 3, 3);
+    }
+    ctx.globalAlpha = 1;
+  } else if (terrain === 3) {
+    const pulse = Math.max(0, Math.sin(time * .00025 + 1)) ** 22;
+    if (pulse > .62) {
+      curve([.78, .05, .72, .22, .89, .26, .84, .46], `rgba(225,237,255,${(pulse - .62) * .55})`, 2);
+      curve([.84, .3, .95, .33, .91, .42, .96, .55], `rgba(225,237,255,${(pulse - .62) * .32})`, 1);
+    }
+  } else if (terrain === 5) {
+    for (let i = 0; i < 4; i++) {
+      const y = .78 + i * .065;
+      curve([0, y, .23, y + Math.sin(time * .0005 + i) * .012, .42, y - .01, .63, y], `#67c6ee${i < 2 ? "28" : "40"}`, 2 + i * .35);
+    }
+  } else if (terrain === 8) {
+    for (let i = 0; i < 5; i++) {
+      const x = .08 + i * .21;
+      const sway = Math.sin(time * .00035 + i) * .015;
+      const gradient = ctx.createLinearGradient(x * width, 0, (x + .18 + sway) * width, height * .8);
+      gradient.addColorStop(0, "#ffe9a00a");
+      gradient.addColorStop(1, "#ffe9a02b");
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(x * width, 0);
+      ctx.lineTo((x + .04 + sway) * width, 0);
+      ctx.lineTo((x + .18 + sway) * width, .8 * height);
+      ctx.lineTo((x + .12) * width, .8 * height);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (terrain === 9) {
+    glow(.08, .76, .11, `rgba(255,209,124,${.1 + Math.sin(time * .001) * .025})`);
+    glow(.92, .75, .11, `rgba(255,209,124,${.08 + Math.sin(time * .001 + 1) * .02})`);
   }
   ctx.restore();
 }
@@ -242,21 +331,7 @@ function drawParticle(ctx: CanvasRenderingContext2D, p: Particle, time: number) 
     ctx.lineTo(p.x - p.vx * 3, p.y - p.size * 4);
     ctx.stroke();
   } else if (p.kind === "snow") {
-    ctx.fillStyle = p.color;
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur = 5 * p.depth;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size * 0.55, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha *= 0.52;
-    ctx.strokeStyle = p.color;
-    ctx.lineWidth = 0.55;
-    ctx.beginPath();
-    ctx.moveTo(p.x - p.size, p.y);
-    ctx.lineTo(p.x + p.size, p.y);
-    ctx.moveTo(p.x, p.y - p.size);
-    ctx.lineTo(p.x, p.y + p.size);
-    ctx.stroke();
+    if (p.sprite) ctx.drawImage(p.sprite, p.x - p.spriteRadius, p.y - p.spriteRadius, p.spriteRadius * 2, p.spriteRadius * 2);
   } else if (p.kind === "bubble") {
     ctx.strokeStyle = p.color;
     ctx.lineWidth = Math.max(0.65, p.size * 0.28);
@@ -281,33 +356,18 @@ function drawParticle(ctx: CanvasRenderingContext2D, p: Particle, time: number) 
     ctx.arc(p.x, p.y, p.size * 0.8, 0, Math.PI * 2);
     ctx.fill();
   } else if (p.kind === "star") {
-    ctx.fillStyle = p.color;
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur = p.size * 3;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size * (0.5 + glow * 0.35), 0, Math.PI * 2);
-    ctx.fill();
+    if (p.sprite) {
+      const pulse = 0.82 + glow * 0.36;
+      const radius = p.spriteRadius * pulse;
+      ctx.drawImage(p.sprite, p.x - radius, p.y - radius, radius * 2, radius * 2);
+    }
   } else if (p.kind === "dust" || p.kind === "spark") {
     ctx.fillStyle = p.color;
     ctx.beginPath();
     ctx.ellipse(p.x, p.y, p.size * (p.kind === "dust" ? 1.8 : 0.7), p.size * 0.55, p.phase, 0, Math.PI * 2);
     ctx.fill();
-  } else {
-    const radius = p.size * (p.kind === "firefly" ? 5 : p.kind === "spore" ? 3.5 : 3);
-    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius);
-    gradient.addColorStop(0, p.color);
-    gradient.addColorStop(0.24, p.color + "99");
-    gradient.addColorStop(1, p.color + "00");
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-    ctx.fill();
-    if (p.kind === "firefly" || p.kind === "spark") {
-      ctx.fillStyle = "#fff8d6";
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, Math.max(0.65, p.size * 0.42), 0, Math.PI * 2);
-      ctx.fill();
-    }
+  } else if (p.sprite) {
+    ctx.drawImage(p.sprite, p.x - p.spriteRadius, p.y - p.spriteRadius, p.spriteRadius * 2, p.spriteRadius * 2);
   }
   ctx.restore();
 }
@@ -327,6 +387,8 @@ export function TerrainAmbience({ terrain, enabled }: { terrain: number; enabled
     let disposed = false;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let particles: Particle[] = [];
+    const sceneryCanvas = document.createElement("canvas");
+    const sceneryCtx = sceneryCanvas.getContext("2d", { alpha: true });
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -336,15 +398,31 @@ export function TerrainAmbience({ terrain, enabled }: { terrain: number; enabled
       canvas.width = Math.round(width * ratio);
       canvas.height = Math.round(height * ratio);
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      sceneryCanvas.width = canvas.width;
+      sceneryCanvas.height = canvas.height;
+      if (sceneryCtx) {
+        sceneryCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        sceneryCtx.clearRect(0, 0, width, height);
+        drawScenery(sceneryCtx, terrain, width, height);
+      }
       const count = width < 540 ? Math.round(scene.count * 0.68) : scene.count;
-      particles = Array.from({ length: count }, (_, i) => makeParticle(scene, i, width, height));
+      particles = Array.from({ length: count }, (_, i) => {
+        const particle = makeParticle(scene, i, width, height);
+        const sprite = createParticleSprite(particle);
+        if (sprite) {
+          particle.sprite = sprite.canvas;
+          particle.spriteRadius = sprite.radius;
+        }
+        return particle;
+      });
       render(performance.now());
     };
 
     const render = (time: number) => {
       if (!width || !height) return;
       ctx.clearRect(0, 0, width, height);
-      drawScenery(ctx, terrain, width, height, time);
+      if (sceneryCanvas.width && sceneryCanvas.height) ctx.drawImage(sceneryCanvas, 0, 0, width, height);
+      drawAnimatedScenery(ctx, terrain, width, height, time);
       for (const p of particles) drawParticle(ctx, p, time);
     };
 
