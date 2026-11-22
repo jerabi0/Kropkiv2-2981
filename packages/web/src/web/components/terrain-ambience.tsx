@@ -240,6 +240,8 @@ function drawScenery(ctx: CanvasRenderingContext2D, terrain: number, width: numb
 }
 
 function drawAnimatedScenery(ctx: CanvasRenderingContext2D, terrain: number, width: number, height: number, time: number) {
+  ctx.save();
+  ctx.globalAlpha *= 0.52;
   const curve = (points: [number, number, number, number, number, number, number, number], color: string, lineWidth: number) => {
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
@@ -296,6 +298,7 @@ function drawAnimatedScenery(ctx: CanvasRenderingContext2D, terrain: number, wid
     glow(.08, .76, .11, `rgba(255,209,124,${.1 + Math.sin(time * .001) * .025})`);
     glow(.92, .75, .11, `rgba(255,209,124,${.08 + Math.sin(time * .001 + 1) * .02})`);
   }
+  ctx.restore();
 }
 
 function drawParticle(ctx: CanvasRenderingContext2D, p: Particle, time: number) {
